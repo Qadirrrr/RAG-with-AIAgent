@@ -9,5 +9,16 @@
     "chunks_count": 2,
     "error_message": null,
     "file_path": "./data/uploads\\2c1269149574_company_policy.txt"
+  },
+  "ec27b69c57fe": {
+    "id": "ec27b69c57fe",
+    "filename": "cloudnest-project-data.pdf",
+    "file_type": "PDF",
+    "file_size": 101160,
+    "upload_date": "2026-11-24T07:46:03.234688",
+    "status": "processed",
+    "chunks_count": 8,
+    "error_message": null,
+    "file_path": "./data/uploads\\ec27b69c57fe_cloudnest-project-data.pdf"
   }
 }

@@ -1,13 +1,24 @@
 {
-  "57cdaffc2396": {
-    "id": "57cdaffc2396",
+  "63f7f1c463e2": {
+    "id": "63f7f1c463e2",
+    "filename": "cloudnest-project-data.pdf",
+    "file_type": "PDF",
+    "file_size": 101160,
+    "upload_date": "2026-11-24T07:35:47.786349",
+    "status": "processed",
+    "chunks_count": 8,
+    "error_message": null,
+    "file_path": "./data/uploads\\63f7f1c463e2_cloudnest-project-data.pdf"
+  },
+  "ef8999186977": {
+    "id": "ef8999186977",
     "filename": "cloudnest-privacy-policy.pdf",
     "file_type": "PDF",
     "file_size": 102897,
-    "upload_date": "2026-11-24T06:59:24.439054",
-    "status": "failed",
-    "chunks_count": 0,
-    "error_message": "OpenAI Quota Exceeded (429): You have no credits remaining on your OpenAI account. Please add billing credits at https://platform.openai.com/settings/organization/billing or provide an active API key.",
-    "file_path": "./data/uploads\\57cdaffc2396_cloudnest-privacy-policy.pdf"
+    "upload_date": "2026-11-24T07:36:02.615553",
+    "status": "processed",
+    "chunks_count": 14,
+    "error_message": null,
+    "file_path": "./data/uploads\\ef8999186977_cloudnest-privacy-policy.pdf"
   }
 }

@@ -1,5 +1,26 @@
 [
   {
+    "id": "6",
+    "type": "upload",
+    "title": "Uploaded: cloudnest-privacy-policy.pdf",
+    "details": "Generated 14 chunks",
+    "timestamp": "2026-11-24T07:36:05.162879"
+  },
+  {
+    "id": "5",
+    "type": "upload",
+    "title": "Uploaded: cloudnest-project-data.pdf",
+    "details": "Generated 8 chunks",
+    "timestamp": "2026-11-24T07:35:50.916023"
+  },
+  {
+    "id": "4",
+    "type": "delete",
+    "title": "Deleted: cloudnest-privacy-policy.pdf",
+    "details": "Removed ID: 57cdaffc2396",
+    "timestamp": "2026-11-24T07:35:42.419271"
+  },
+  {
     "id": "3",
     "type": "upload_failed",
     "title": "Failed: cloudnest-privacy-policy.pdf",
