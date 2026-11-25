@@ -146,7 +146,7 @@ def build_tools(workspace_id: str, agent_id: str, show_citations: bool = False,
         """Search this chatbot's own uploaded knowledge for text relevant to the query. Use this before answering questions about the business, its documents, plans, prices or policies."""
         from app.services.tenant_vector_store import tenant_vector_store
         try:
-            docs = tenant_vector_store.similarity_search(agent_id, query, k=4)
+            docs = tenant_vector_store.similarity_search(agent_id, query, k=settings.RETRIEVAL_K)
         except Exception:
             return "No knowledge was found for that query."
         if not docs:
@@ -248,10 +248,11 @@ async def run_agent_answer(llm, question: str, history: Optional[List[Dict[str, 
         f"{lang_note}\n"
         "Rules:\n"
         "1. For questions about the business, its documents, plans, prices or policies, call knowledge_search first and answer using only what it returns. Do not add anything that is not in the returned knowledge.\n"
-        "2. Use calculator for arithmetic and current_datetime for date or time questions, and list_documents when asked which documents are available.\n"
-        "3. Never mention documents, files, pages, sources, citations, or where an answer came from in your answer text. Never write phrases such as according to, as stated in, the document says, or from the source.\n"
-        "4. If the tools return nothing relevant, say politely: 'I do not have that information.' Do not guess or invent an answer.\n"
-        "5. Use a professional tone. Format the answer cleanly with short paragraphs and simple bullet points. Do not use asterisks, hashes, underscores, or em dashes for formatting."
+        "2. Read all of the returned knowledge carefully. Combine related facts from different sections into one complete answer, and include the specific numbers, names, dates and conditions instead of vague summaries. If the question has more than one part, answer every part, and search again with a different query when another part is not covered yet.\n"
+        "3. Use calculator for arithmetic and current_datetime for date or time questions, and list_documents when asked which documents are available.\n"
+        "4. Never mention documents, files, pages, sources, citations, or where an answer came from in your answer text. Never write phrases such as according to, as stated in, the document says, or from the source.\n"
+        "5. If the tools return nothing relevant, say politely: 'I do not have that information.' Do not guess or invent an answer.\n"
+        "6. Use a professional tone. When the knowledge supports a complete, detailed answer, prefer that over a short one. Format the answer cleanly with short paragraphs and simple bullet points. Do not use asterisks, hashes, underscores, or em dashes for formatting."
     )
 
     graph = create_react_agent(model=llm, tools=tools, prompt=system_prompt)

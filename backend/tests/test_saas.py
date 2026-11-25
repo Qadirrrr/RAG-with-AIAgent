@@ -747,3 +747,82 @@ def test_ollama_models_endpoint_when_ollama_unreachable(client, monkeypatch):
     r = client.get("/api/ollama/models", headers=h)
     assert r.status_code == 200, r.text
     assert r.json() == {"models": [], "default": "qwen2.5:7b"}
+
+
+# ---------------------------------------------------------------------------
+# Chunking and retrieval depth: documents are split into smaller chunks
+# (500/100) and each question retrieves RETRIEVAL_K sections, so answers
+# are built from more of the document instead of a few large chunks.
+# ---------------------------------------------------------------------------
+
+def _sample_text():
+    lines = []
+    for i in range(1, 21):
+        lines.append(
+            f"Section {i}: The plan detail number {i} includes a specific "
+            f"allowance value of {100 + i} units for every customer account.")
+    return "\n".join(lines)
+
+
+def test_document_loader_uses_fine_chunks():
+    from app.config import settings
+    from app.services.document_loader import DocumentLoaderService
+
+    assert settings.CHUNK_SIZE == 500
+    assert settings.CHUNK_OVERLAP == 100
+
+    text = _sample_text()
+    assert len(text) > 2000
+
+    chunks = DocumentLoaderService().split_text(text, "doc-test", "guide.txt")
+    assert len(chunks) >= 5
+    # The end of the document is covered by the chunks (in the last one).
+    assert "Section 20" in chunks[-1].page_content
+    joined = "\n".join(c.page_content for c in chunks)
+    assert "Section 1:" in joined and "Section 20" in joined
+
+    # The old coarse settings (1000/150) produced far fewer chunks for
+    # the same text; the new defaults are strictly finer.
+    old_chunks = DocumentLoaderService(
+        chunk_size=1000, chunk_overlap=150).split_text(text, "doc-test", "guide.txt")
+    assert len(chunks) > len(old_chunks)
+
+
+def test_answer_question_uses_retrieval_k(monkeypatch):
+    import asyncio
+
+    import app.services.rag_agent as rag
+    from app.config import settings
+    from app.services.tenant_vector_store import tenant_vector_store as tvs
+
+    assert settings.RETRIEVAL_K == 10
+    calls = {}
+
+    class FakeDoc:
+        page_content = "The Business plan costs 1499 rupees per month."
+        metadata = {"document_name": "guide.txt", "document_id": "doc-1"}
+
+    def fake_search(agent_id, query, k=4):
+        calls["agent_id"] = agent_id
+        calls["k"] = k
+        return [FakeDoc()]
+
+    monkeypatch.setattr(tvs, "similarity_search", fake_search)
+
+    class FakeResult:
+        content = "The Business plan costs 1499 rupees per month."
+
+    class FakeLLM:
+        async def ainvoke(self, messages):
+            return FakeResult()
+
+    service = rag.RAGAgentService()
+    monkeypatch.setattr(service, "_get_llm", lambda **kwargs: FakeLLM())
+    out = asyncio.run(service.answer_question(
+        "What does the Business plan cost?",
+        agent_config={"name": "Deep Bot", "mode": "rag"},
+        agent_id="agent-deep"))
+
+    assert calls["agent_id"] == "agent-deep"
+    assert calls["k"] == settings.RETRIEVAL_K
+    assert out.response == "The Business plan costs 1499 rupees per month."

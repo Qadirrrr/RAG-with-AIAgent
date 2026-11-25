@@ -173,9 +173,9 @@ class RAGAgentService:
             agent_steps.append("Retrieving knowledge...")
             if agent_id:
                 from app.services.tenant_vector_store import tenant_vector_store
-                docs = tenant_vector_store.similarity_search(agent_id, question, k=4)
+                docs = tenant_vector_store.similarity_search(agent_id, question, k=settings.RETRIEVAL_K)
             else:
-                docs = vector_store_service.similarity_search(question, k=4)
+                docs = vector_store_service.similarity_search(question, k=settings.RETRIEVAL_K)
         except Exception as e:
             docs = []
             agent_steps.append("Knowledge search warning.")
@@ -214,11 +214,14 @@ class RAGAgentService:
                 f"{custom}\n"
                 f"{lang_note}\n"
                 "Rules:\n"
-                "1. Give a concise, accurate, direct answer using only the knowledge below. Do not add anything that is not in the knowledge.\n"
-                "2. Never mention documents, files, pages, sources, citations, or where an answer came from. Never write phrases such as according to, as stated in, the document says, or from the source.\n"
-                "3. If the knowledge below does not cover the question, say politely: 'I do not have that information.' Do not guess or invent an answer.\n"
-                "4. Use a professional tone and avoid unnecessary filler words.\n"
-                "5. Format the answer cleanly with short paragraphs and simple bullet points. Do not use asterisks, hashes, underscores, or em dashes for formatting."
+                "1. Give an accurate answer using only the knowledge below. Do not add anything that is not in the knowledge.\n"
+                "2. Read every section of the knowledge carefully before answering. The relevant facts may be spread across several sections, so combine related facts from different sections into one complete answer instead of relying on a single section.\n"
+                "3. Include the specific details from the knowledge: numbers, names, dates, prices and conditions. Do not replace them with vague summaries.\n"
+                "4. If the question has more than one part, answer every part. When the knowledge supports a complete, detailed answer, prefer that over a short one.\n"
+                "5. Never mention documents, files, pages, sources, citations, or where an answer came from. Never write phrases such as according to, as stated in, the document says, or from the source.\n"
+                "6. If the knowledge below does not cover the question, say politely: 'I do not have that information.' Do not guess or invent an answer.\n"
+                "7. Use a professional tone and avoid unnecessary filler words.\n"
+                "8. Format the answer cleanly with short paragraphs and simple bullet points. Do not use asterisks, hashes, underscores, or em dashes for formatting."
             )
             user_prompt = f"KNOWLEDGE:\n{context_text}\n\nUSER QUESTION:\n{question}"
         else:

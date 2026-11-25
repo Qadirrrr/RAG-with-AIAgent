@@ -6,8 +6,10 @@ from langchain_core.documents import Document
 import pypdf
 import docx2txt
 
+from app.config import settings
+
 class DocumentLoaderService:
-    def __init__(self, chunk_size: int = 1000, chunk_overlap: int = 150):
+    def __init__(self, chunk_size: int = 500, chunk_overlap: int = 100):
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
@@ -154,5 +156,11 @@ class DocumentLoaderService:
             )
         ]
 
-document_loader_service = DocumentLoaderService()
+# The shared ingestion service uses the configured chunking so an
+# operator can tune chunk size and overlap via CHUNK_SIZE and
+# CHUNK_OVERLAP in the backend .env without touching code.
+document_loader_service = DocumentLoaderService(
+    chunk_size=settings.CHUNK_SIZE,
+    chunk_overlap=settings.CHUNK_OVERLAP,
+)
 

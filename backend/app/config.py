@@ -21,6 +21,19 @@ class Settings(BaseSettings):
     # Agent mode (LangGraph): maximum tool-calling steps per answer
     AGENT_MAX_STEPS: int = 5
 
+    # Document chunking at ingestion time. Smaller chunks keep each
+    # retrieved section focused, so answers can be built from more,
+    # more precise pieces of the knowledge. Changing these only affects
+    # documents uploaded afterwards; existing documents keep the chunks
+    # they were ingested with until they are re-uploaded.
+    CHUNK_SIZE: int = 500
+    CHUNK_OVERLAP: int = 100
+
+    # How many knowledge sections are retrieved per question and given
+    # to the model. A deeper retrieval lets the model combine facts
+    # from across a document instead of answering from a few sections.
+    RETRIEVAL_K: int = 10
+
     CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
     UPLOAD_DIRECTORY: str = "./data/uploads"
 
