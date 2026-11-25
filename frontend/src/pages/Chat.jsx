@@ -1,14 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, Sparkles, AlertCircle, RefreshCw, MessageSquare } from 'lucide-react';
+import { Bot, AlertCircle } from 'lucide-react';
 import ChatMessage from '../components/ChatMessage';
 import ChatInput from '../components/ChatInput';
 import apiService from '../services/api';
 
 const DEFAULT_WELCOME_MESSAGE = {
   role: 'assistant',
-  content: "Hello! I am your RAG AI Agent. I can answer questions by searching through your uploaded PDF, DOCX, and TXT knowledge documents and providing citations with page numbers. What would you like to know?",
+  content: "Hello! How can I help you today?",
   timestamp: new Date().toISOString(),
-  sources: [],
 };
 
 const SUGGESTIONS = [
@@ -66,7 +65,6 @@ export default function Chat() {
       const aiMsg = {
         role: 'assistant',
         content: data.response,
-        sources: data.sources || [],
         timestamp: new Date().toISOString(),
       };
 
@@ -77,7 +75,7 @@ export default function Chat() {
       
       const errorMsg = {
         role: 'assistant',
-        content: `⚠️ Failed to get a response: ${errorDetail}`,
+        content: `Failed to get a response: ${errorDetail}`,
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -104,10 +102,10 @@ export default function Chat() {
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-800">
-              AI Document Knowledge Agent
+              Chat
             </h2>
             <p className="text-[11px] text-slate-500">
-              Powered by LangChain tools, ChromaDB retrieval, & OpenAI
+              Answers are based on your uploaded knowledge
             </p>
           </div>
         </div>
@@ -143,7 +141,7 @@ export default function Chat() {
         {isLoading && (
           <div className="flex justify-start items-center space-x-3 text-slate-500 text-xs py-2">
             <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-teal-600 shadow-xs animate-pulse">
-              <Sparkles className="w-4 h-4" />
+              <Bot className="w-4 h-4" />
             </div>
             <div className="bg-slate-50 border border-slate-200/80 rounded-2xl px-4 py-3 flex items-center space-x-2">
               <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" />
@@ -167,7 +165,7 @@ export default function Chat() {
               disabled={isLoading}
               className="text-xs bg-white hover:bg-teal-50 hover:text-teal-600 text-slate-600 border border-slate-200 px-3 py-1.5 rounded-full transition-colors truncate max-w-xs text-left"
             >
-              💡 {suggestion}
+              {suggestion}
             </button>
           ))}
         </div>

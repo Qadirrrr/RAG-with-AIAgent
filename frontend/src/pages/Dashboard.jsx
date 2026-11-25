@@ -14,33 +14,43 @@ import {
 } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import apiService from '../services/api';
+import { useWorkspace } from '../context/WorkspaceContext';
+
+const EMPTY_STATS = {
+  total_documents: 0,
+  processed_documents: 0,
+  total_chunks: 0,
+  total_questions_asked: 0,
+  recent_activity: [],
+};
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({
-    total_documents: 0,
-    processed_documents: 0,
-    total_chunks: 0,
-    total_questions_asked: 0,
-    recent_activity: [],
-  });
+  const { selectedId } = useWorkspace();
+  const [stats, setStats] = useState(EMPTY_STATS);
   const [health, setHealth] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [selectedId]);
 
   const fetchDashboardData = async () => {
+    if (!selectedId) {
+      setStats(EMPTY_STATS);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
+      setStats(EMPTY_STATS);
       const [statsData, healthData] = await Promise.allSettled([
-        apiService.getStats(),
+        apiService.getWorkspaceStats(selectedId),
         apiService.getHealth()
       ]);
 
       if (statsData.status === 'fulfilled') {
-        setStats(statsData.value);
+        setStats({ ...EMPTY_STATS, ...statsData.value });
       }
       if (healthData.status === 'fulfilled') {
         setHealth(healthData.value);
@@ -75,7 +85,7 @@ export default function Dashboard() {
             Intelligent Document Agent
           </h2>
           <p className="mt-2 text-slate-300 text-sm sm:text-base leading-relaxed">
-            Upload enterprise documents (PDF, DOCX, TXT), index semantic vectors with ChromaDB, and query with OpenAI Agent retrieval.
+            Upload your documents and website pages, then ask questions and get direct, professional answers.
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
@@ -118,21 +128,21 @@ export default function Dashboard() {
           title="Processed Documents"
           value={stats.processed_documents}
           icon={CheckCircle2}
-          description="Indexed in Chroma Vector DB"
+          description="Ready in this workspace"
           color="emerald"
         />
         <StatCard
           title="Questions Asked"
           value={stats.total_questions_asked}
           icon={HelpCircle}
-          description="AI Agent queries answered"
+          description="Questions answered"
           color="blue"
         />
         <StatCard
           title="Total Chunks"
           value={stats.total_chunks}
           icon={Layers}
-          description="Semantic text segments"
+          description="Knowledge segments"
           color="amber"
         />
       </div>

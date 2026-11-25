@@ -25,14 +25,14 @@ export default function Analytics() {
   if (loading) return <Spinner label="Loading analytics..." />;
   if (!selectedId) return <EmptyState icon={BarChart3} title="No workspace selected" text="Select a workspace from the sidebar to view analytics." />;
 
-  const totalMessages = data?.total_messages ?? data?.messages ?? 0;
-  const totalAgents = data?.total_agents ?? data?.agents_count ?? 0;
-  const totalDocs = data?.total_documents ?? data?.documents ?? 0;
-  const totalConvs = data?.total_conversations ?? data?.conversations ?? 0;
-  const limit = data?.messages_limit ?? data?.monthly_limit ?? 0;
+  const totalMessages = data?.usage?.messages_used_this_month ?? data?.total_messages ?? 0;
+  const totalAgents = data?.agents_count ?? 0;
+  const totalDocs = data?.documents_count ?? 0;
+  const totalConvs = data?.total_conversations ?? 0;
+  const limit = data?.usage?.monthly_message_limit ?? 0;
   const usedPct = limit > 0 ? Math.min(100, Math.round((totalMessages / limit) * 100)) : 0;
-  const daily = Array.isArray(data?.daily_messages) ? data.daily_messages : (Array.isArray(data?.by_day) ? data.by_day : []);
-  const perAgent = Array.isArray(data?.per_agent) ? data.per_agent : (Array.isArray(data?.agents) ? data.agents : []);
+  const daily = Array.isArray(data?.messages_per_day_last_14d) ? data.messages_per_day_last_14d : [];
+  const perAgent = Array.isArray(data?.messages_per_agent) ? data.messages_per_agent : [];
   const maxDaily = daily.reduce((m, d) => Math.max(m, d.count ?? d.messages ?? 0), 0) || 1;
 
   return (
@@ -95,11 +95,11 @@ export default function Analytics() {
             </thead>
             <tbody>
               {perAgent.map((a) => (
-                <tr key={a.id || a.name} className="border-b border-slate-50">
-                  <td className="px-6 py-3 font-medium text-slate-800">{a.name}</td>
-                  <td className="px-6 py-3 text-slate-600">{a.messages ?? a.message_count ?? 0}</td>
-                  <td className="px-6 py-3 text-slate-600">{a.conversations ?? a.conversation_count ?? 0}</td>
-                  <td className="px-6 py-3 text-slate-600">{a.documents ?? a.document_count ?? 0}</td>
+                <tr key={a.agent_id || a.agent_name} className="border-b border-slate-50">
+                  <td className="px-6 py-3 font-medium text-slate-800">{a.agent_name || a.agent_id}</td>
+                  <td className="px-6 py-3 text-slate-600">{a.messages ?? 0}</td>
+                  <td className="px-6 py-3 text-slate-600">-</td>
+                  <td className="px-6 py-3 text-slate-600">-</td>
                 </tr>
               ))}
             </tbody>

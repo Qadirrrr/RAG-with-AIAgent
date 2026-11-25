@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Bot, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { apiError } from '../services/api';
 import { inputCls, labelCls, btnPrimary } from '../components/ui';
@@ -35,7 +35,7 @@ export default function Signup() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="w-12 h-12 rounded-2xl bg-teal-700 text-white flex items-center justify-center mx-auto shadow-lg shadow-teal-200">
-            <Sparkles className="w-6 h-6" />
+            <Bot className="w-6 h-6" />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 mt-4">Create your account</h1>
           <p className="text-sm text-slate-500 mt-1">Build your first AI agent in minutes, no code needed.</p>

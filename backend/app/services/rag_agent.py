@@ -6,7 +6,7 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from app.config import settings
 from app.services.vector_store import vector_store_service
 from app.services.storage import storage_service
-from app.models.schemas import DocumentSource, ChatResponse
+from app.models.schemas import ChatResponse
 
 # Provider -> allowed chat models (validated again in routes/agents.py).
 ALLOWED_MODELS = {
@@ -76,11 +76,10 @@ class RAGAgentService:
             )
 
         agent_steps = []
-        sources: List[DocumentSource] = []
 
         # 1. Vector retrieval: tenant collection only when agent_id is set.
         try:
-            agent_steps.append("Retrieving semantic vector context from ChromaDB...")
+            agent_steps.append("Retrieving knowledge...")
             if agent_id:
                 from app.services.tenant_vector_store import tenant_vector_store
                 docs = tenant_vector_store.similarity_search(agent_id, question, k=4)
@@ -88,29 +87,14 @@ class RAGAgentService:
                 docs = vector_store_service.similarity_search(question, k=4)
         except Exception as e:
             docs = []
-            agent_steps.append(f"Vector search warning: {str(e)}")
+            agent_steps.append("Knowledge search warning.")
 
         context_parts = []
         if docs:
             for doc in docs:
-                doc_id = doc.metadata.get("document_id", "unknown")
-                doc_name = doc.metadata.get("document_name", "Untitled")
-                page = doc.metadata.get("page", 1)
                 content = doc.page_content.strip()
-
-                if not any(s.document_id == doc_id and s.snippet == content[:300] for s in sources):
-                    sources.append(
-                        DocumentSource(
-                            document_id=doc_id,
-                            document_name=doc_name,
-                            page=page,
-                            snippet=content[:300] + ("..." if len(content) > 300 else "")
-                        )
-                    )
-
-                context_parts.append(
-                    f"--- Source Document: {doc_name} (Page {page}) ---\n{content}"
-                )
+                if content:
+                    context_parts.append(content)
 
         # 2. Build prompt from the agent's own instructions and language.
         lang_note = f"Answer in {language}." if language else ""
@@ -118,23 +102,21 @@ class RAGAgentService:
         if context_parts:
             context_text = "\n\n".join(context_parts)
             system_prompt = (
-                f"You are {agent_name}, an expert AI Knowledge Assistant answering questions strictly based on the provided document context."
+                f"You are {agent_name}, a professional support assistant. Answer the question directly and professionally, using only the knowledge provided below."
                 f"{custom}\n"
                 f"{lang_note}\n"
                 "Rules:\n"
-                "1. Synthesize a concise, accurate, and direct response strictly using the context below.\n"
-                "2. Reference the document name and page number if relevant.\n"
-                "3. If the provided context does not contain enough information to answer the question, clearly state: "
-                "'I could not find relevant information in the uploaded documents to answer your question.'\n"
-                "4. Be direct, professional, and avoid unnecessary filler words."
+                "1. Give a concise, accurate, direct answer using only the knowledge below. Do not add anything that is not in the knowledge.\n"
+                "2. Never mention documents, files, pages, sources, citations, or where an answer came from. Never write phrases such as according to, as stated in, the document says, or from the source.\n"
+                "3. If the knowledge below does not cover the question, say politely: 'I do not have that information.' Do not guess or invent an answer.\n"
+                "4. Use a professional tone and avoid unnecessary filler words."
             )
-            user_prompt = f"DOCUMENT CONTEXT:\n{context_text}\n\nUSER QUESTION:\n{question}"
+            user_prompt = f"KNOWLEDGE:\n{context_text}\n\nUSER QUESTION:\n{question}"
         else:
             system_prompt = (
-                f"You are {agent_name}, an AI Knowledge Assistant.{custom}\n"
+                f"You are {agent_name}, a professional support assistant.{custom}\n"
                 f"{lang_note}\n"
-                "The user has not yet uploaded relevant knowledge documents or no matching content was found.\n"
-                "Politely inform the user that no relevant documents were found and encourage them to upload documents for this agent."
+                "No relevant knowledge is available for this question. Politely say: 'I do not have that information.' Do not guess or invent an answer."
             )
             user_prompt = question
 
@@ -153,7 +135,7 @@ class RAGAgentService:
         # 3. Direct LLM invocation
         try:
             used_model = model or settings.get_active_model()
-            agent_steps.append(f"Generating answer using {used_model}...")
+            agent_steps.append("Generating answer...")
             result = await llm.ainvoke(messages)
 
             output_text = ""
@@ -169,16 +151,16 @@ class RAGAgentService:
                 output_text = "\n".join(parts) if parts else str(result.content)
 
             if not output_text.strip():
-                output_text = "I could not find relevant information in the uploaded documents to answer your question."
+                output_text = "I do not have that information."
 
             if not agent_id:
                 storage_service.increment_questions()
-                storage_service.log_activity("chat", f"Asked: {question[:50]}...", f"Answered with {len(sources)} source(s)")
+                storage_service.log_activity("chat", f"Asked: {question[:50]}...", "Answered")
 
             return ChatResponse(
                 response=output_text.strip(),
-                sources=sources,
-                agent_steps=agent_steps
+                sources=[],
+                agent_steps=[]
             )
 
         except Exception as e:
@@ -190,8 +172,8 @@ class RAGAgentService:
 
             return ChatResponse(
                 response=friendly_msg,
-                sources=sources,
-                agent_steps=[f"Error: {error_str}"]
+                sources=[],
+                agent_steps=[]
             )
 
 rag_agent_service = RAGAgentService()

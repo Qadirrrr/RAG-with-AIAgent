@@ -177,3 +177,28 @@ def test_admin_endpoints_require_super_admin(client):
     r = client.get("/api/admin/overview", headers={"Authorization": f"Bearer {admin_token}"})
     assert r.status_code == 200, r.text
     assert "totals" in r.json()
+
+
+def test_new_workspace_stats_are_zero_and_isolated(client):
+    """A fresh workspace must show only its own data: zeros, no other workspace's docs."""
+    token, _ = _auth(client, "heidi@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    ws_id = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+
+    r = client.get(f"/api/workspaces/{ws_id}/stats", headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json()["total_documents"] == 0
+    assert r.json()["total_questions_asked"] == 0
+    assert r.json()["total_chunks"] == 0
+    assert r.json()["recent_activity"] == []
+
+    r = client.get(f"/api/workspaces/{ws_id}/documents", headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json() == []
+
+    # Chat responses must not expose sources.
+    agent = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={"name": "Bot"}).json()
+    r = client.post(f"/api/workspaces/{ws_id}/agents/{agent['id']}/chat", headers=h,
+                    json={"message": "Hello"})
+    assert r.status_code == 200, r.text
+    assert r.json().get("sources") == []

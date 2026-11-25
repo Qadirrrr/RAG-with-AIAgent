@@ -1,11 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Bot, FileText, MessageSquare, BarChart3, Plug, ShieldCheck, Check, ArrowRight } from 'lucide-react';
+import { Bot, FileText, MessageSquare, BarChart3, Plug, ShieldCheck, Check, ArrowRight } from 'lucide-react';
 import { FALLBACK_PLANS } from '../services/api';
 
 const features = [
   { icon: Bot, title: 'Multiple AI agents', text: 'Create a separate agent for support, sales, onboarding or internal knowledge, each with its own instructions and personality.' },
-  { icon: FileText, title: 'RAG knowledge base', text: 'Upload PDF, DOCX and TXT files or add website URLs. Documents are chunked, embedded and stored in ChromaDB for accurate answers with sources.' },
+  { icon: FileText, title: 'RAG knowledge base', text: 'Upload PDF, DOCX and TXT files or add website URLs. Documents are chunked, embedded and stored for accurate, professional answers.' },
   { icon: MessageSquare, title: 'Playground testing', text: 'Test every agent in a live chat playground before you publish it, and review real conversations from your customers.' },
   { icon: Plug, title: 'Website widget and API', text: 'Embed a chat widget on any website with one script tag, or call the REST API from your own app with a secure API key.' },
   { icon: BarChart3, title: 'Analytics and usage', text: 'Track messages, agents, documents and usage against your plan limits, and see which agents your visitors use most.' },
@@ -18,7 +18,7 @@ export default function Landing() {
       <header className="bg-white border-b border-slate-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-teal-700 text-white flex items-center justify-center"><Sparkles className="w-5 h-5" /></div>
+            <div className="w-9 h-9 rounded-xl bg-teal-700 text-white flex items-center justify-center"><Bot className="w-5 h-5" /></div>
             <span className="font-bold text-lg tracking-tight">RAG Agent</span>
             <span className="hidden sm:inline text-[11px] font-medium text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded">SaaS Platform</span>
           </div>

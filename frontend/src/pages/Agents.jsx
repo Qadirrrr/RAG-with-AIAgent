@@ -150,7 +150,7 @@ export default function Agents() {
             </div>
             <div>
               <label className={labelCls}>Instructions</label>
-              <textarea className={inputCls + ' min-h-[110px]'} value={form.instructions} onChange={(e) => setForm({ ...form, instructions: e.target.value })} placeholder="You are a helpful support agent. Answer only from the uploaded documents and cite your sources." />
+              <textarea className={inputCls + ' min-h-[110px]'} value={form.instructions} onChange={(e) => setForm({ ...form, instructions: e.target.value })} placeholder="You are a helpful support agent. Answer only from the uploaded knowledge." />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>

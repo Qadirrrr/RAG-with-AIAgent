@@ -112,6 +112,8 @@ export const apiService = {
 
   // Analytics
   getAnalytics: async (ws) => (await apiClient.get(`/api/workspaces/${ws}/analytics`)).data,
+  getWorkspaceStats: async (ws) => (await apiClient.get(`/api/workspaces/${ws}/stats`)).data,
+  getWorkspaceDocuments: async (ws) => normalizeList((await apiClient.get(`/api/workspaces/${ws}/documents`)).data, ['documents']),
 
   // API keys
   getApiKeys: async (ws, agentId) => normalizeList((await apiClient.get(`/api/workspaces/${ws}/agents/${agentId}/api-keys`)).data, ['api_keys', 'keys']),

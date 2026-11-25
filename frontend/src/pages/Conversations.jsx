@@ -24,6 +24,7 @@ export default function Conversations() {
   }, [selectedId]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { setSelected(null); setMessages([]); }, [selectedId]);
 
   const open = async (conv) => {
     setSelected(conv);

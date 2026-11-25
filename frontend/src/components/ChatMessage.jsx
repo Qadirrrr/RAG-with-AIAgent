@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Bot, User, BookOpen, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react';
+import { Bot, User, Copy, Check } from 'lucide-react';
 
 export default function ChatMessage({ message }) {
   const isUser = message.role === 'user';
-  const [sourcesOpen, setSourcesOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const copyText = () => {
@@ -43,7 +42,7 @@ export default function ChatMessage({ message }) {
             {/* AI Action Bar */}
             {!isUser && (
               <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                <span className="text-[11px] font-medium text-slate-400">AI Knowledge Agent</span>
+                <span className="text-[11px] font-medium text-slate-400">Assistant</span>
                 <button
                   onClick={copyText}
                   className="flex items-center space-x-1 hover:text-slate-700 transition-colors p-1 rounded hover:bg-slate-50"
@@ -55,45 +54,6 @@ export default function ChatMessage({ message }) {
               </div>
             )}
           </div>
-
-          {/* Sources Section for AI Messages */}
-          {!isUser && message.sources && message.sources.length > 0 && (
-            <div className="mt-2 text-xs">
-              <button
-                onClick={() => setSourcesOpen(!sourcesOpen)}
-                className="flex items-center space-x-1.5 text-teal-600 hover:text-teal-700 font-medium bg-teal-50/70 hover:bg-teal-50 px-3 py-1.5 rounded-lg border border-teal-100 transition-colors"
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>Sources ({message.sources.length} document references)</span>
-                {sourcesOpen ? <ChevronUp className="w-3.5 h-3.5 ml-1" /> : <ChevronDown className="w-3.5 h-3.5 ml-1" />}
-              </button>
-
-              {sourcesOpen && (
-                <div className="mt-2 space-y-2 max-w-2xl animate-in fade-in duration-200">
-                  {message.sources.map((src, index) => (
-                    <div 
-                      key={index} 
-                      className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs text-slate-600"
-                    >
-                      <div className="flex items-center justify-between mb-1.5 font-medium text-slate-800">
-                        <span className="truncate text-xs font-semibold text-teal-700">
-                          📄 {src.document_name}
-                        </span>
-                        {src.page && (
-                          <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono">
-                            Page {src.page}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-600 leading-relaxed italic bg-slate-50 p-2.5 rounded-lg border border-slate-100 font-sans">
-                        "{src.snippet}"
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Timestamp */}
           {message.timestamp && (

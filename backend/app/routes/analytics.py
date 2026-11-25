@@ -1,5 +1,4 @@
 """Workspace analytics and conversation history."""
-import json
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
@@ -8,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db import Agent, Conversation, Document, Message, ensure_free_subscription, get_db
 from app.deps import get_current_user, get_workspace_or_404
-from app.models.schemas import ConversationOut, MessageOut
+from app.models.schemas import ConversationOut, MessageOut, TenantDocumentOut
 
 router = APIRouter(prefix="/api/workspaces", tags=["analytics"])
 
@@ -81,10 +80,44 @@ def get_conversation(workspace_id: str, conversation_id: str, user=Depends(get_c
     msgs = db.query(Message).filter(Message.conversation_id == conv.id).order_by(Message.created_at.asc()).all()
     out_msgs = []
     for m in msgs:
-        try:
-            sources = json.loads(m.sources or "[]")
-        except Exception:
-            sources = []
-        out_msgs.append(MessageOut(id=m.id, role=m.role, content=m.content, sources=sources, created_at=m.created_at))
+        out_msgs.append(MessageOut(id=m.id, role=m.role, content=m.content, sources=[], created_at=m.created_at))
     return ConversationOut(id=conv.id, agent_id=conv.agent_id, workspace_id=conv.workspace_id, title=conv.title,
                            channel=conv.channel, created_at=conv.created_at, messages=out_msgs)
+
+
+@router.get("/{workspace_id}/stats")
+def get_workspace_stats(workspace_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """Dashboard numbers scoped to one workspace only. A fresh workspace returns zeros."""
+    ws = get_workspace_or_404(workspace_id, user, db)
+    docs = db.query(Document).filter(Document.workspace_id == ws.id).all()
+    convs = db.query(Conversation).filter(Conversation.workspace_id == ws.id).order_by(Conversation.created_at.desc()).all()
+    conv_ids = [c.id for c in convs]
+    total_messages = db.query(Message).filter(Message.conversation_id.in_(conv_ids)).count() if conv_ids else 0
+    recent = []
+    for c in convs[:5]:
+        recent.append({"id": c.id, "type": "chat", "title": c.title or "Conversation",
+                       "details": "", "timestamp": c.created_at.isoformat() if c.created_at else None})
+    for d in sorted(docs, key=lambda x: x.created_at or datetime.min, reverse=True)[:5]:
+        recent.append({"id": d.id, "type": "upload", "title": d.filename,
+                       "details": d.status, "timestamp": d.created_at.isoformat() if d.created_at else None})
+    recent = sorted(recent, key=lambda x: x.get("timestamp") or "", reverse=True)[:5]
+    return {
+        "total_documents": len(docs),
+        "processed_documents": sum(1 for d in docs if d.status == "processed"),
+        "total_chunks": sum(d.chunks_count or 0 for d in docs),
+        "total_questions_asked": total_messages,
+        "total_conversations": len(convs),
+        "agents_count": db.query(Agent).filter(Agent.workspace_id == ws.id).count(),
+        "recent_activity": recent,
+    }
+
+
+@router.get("/{workspace_id}/documents", response_model=list[TenantDocumentOut])
+def list_workspace_documents(workspace_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    """All documents of one workspace, across its agents. Never the legacy global store."""
+    ws = get_workspace_or_404(workspace_id, user, db)
+    docs = db.query(Document).filter(Document.workspace_id == ws.id).order_by(Document.created_at.desc()).all()
+    return [TenantDocumentOut(id=d.id, agent_id=d.agent_id, workspace_id=d.workspace_id, filename=d.filename,
+                              file_type=d.file_type, file_size=d.file_size, status=d.status,
+                              chunks_count=d.chunks_count, source_type=d.source_type, source_url=d.source_url,
+                              error_message=d.error_message, created_at=d.created_at) for d in docs]

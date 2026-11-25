@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Bot, MessageSquare, Files, History, BarChart3,
-  CreditCard, Plug, ShieldCheck, Settings, Sparkles, X, LogOut, FlaskConical,
+  CreditCard, Plug, ShieldCheck, Settings, X, LogOut,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import WorkspaceSwitcher from './WorkspaceSwitcher';
@@ -10,7 +10,6 @@ import WorkspaceSwitcher from './WorkspaceSwitcher';
 const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
   { name: 'Agents', path: '/agents', icon: Bot },
-  { name: 'Playground', path: '/agents', icon: FlaskConical },
   { name: 'Conversations', path: '/conversations', icon: History },
   { name: 'Analytics', path: '/analytics', icon: BarChart3 },
   { name: 'Billing', path: '/billing', icon: CreditCard },
@@ -40,7 +39,7 @@ export default function Sidebar({ isOpen, onClose }) {
           <div className="h-16 flex items-center justify-between px-6 border-b border-white/25">
             <div className="flex items-center space-x-3">
               <div className="w-9 h-9 rounded-xl bg-teal-700 flex items-center justify-center text-white shadow-sm">
-                <Sparkles className="w-5 h-5" />
+                <Bot className="w-5 h-5" />
               </div>
               <div>
                 <span className="font-bold text-white tracking-tight text-base block leading-tight">RAG Agent</span>

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Trash2, Loader2, Sparkles } from 'lucide-react';
+import { Send, Trash2, Loader2 } from 'lucide-react';
 
 export default function ChatInput({ onSendMessage, isLoading, onClearChat, disabled }) {
   const [input, setInput] = useState('');
@@ -78,11 +78,7 @@ export default function ChatInput({ onSendMessage, isLoading, onClearChat, disab
           </div>
         </div>
 
-        <div className="flex items-center justify-between mt-2 px-2 text-[11px] text-slate-400">
-          <div className="flex items-center space-x-1">
-            <Sparkles className="w-3 h-3 text-teal-500" />
-            <span>Agent answers with LangChain context retrieval and page sources</span>
-          </div>
+        <div className="flex items-center justify-end mt-2 px-2 text-[11px] text-slate-400">
           <span>Shift + Enter for new line</span>
         </div>
       </form>

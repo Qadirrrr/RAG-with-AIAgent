@@ -21,9 +21,8 @@ export default function Playground() {
 
   const greeting = () => ({
     role: 'assistant',
-    content: agent?.greeting || `Hello! I am ${agent?.name || 'your AI agent'}. Ask me anything about the uploaded knowledge base.`,
+    content: agent?.greeting || `Hello! I am ${agent?.name || 'your assistant'}. How can I help you today?`,
     timestamp: new Date().toISOString(),
-    sources: [],
   });
 
   const load = useCallback(async () => {
@@ -46,6 +45,7 @@ export default function Playground() {
   }, [selectedId, agentId]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { setMessages([]); setConversationId(null); }, [selectedId, agentId]);
   useEffect(() => { if (agent && messages.length === 0) setMessages([greeting()]); }, [agent]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, sending]);
 
@@ -73,7 +73,6 @@ export default function Playground() {
       setMessages((prev) => [...prev, {
         role: 'assistant',
         content: data.response || data.answer || 'No response returned.',
-        sources: data.sources || [],
         timestamp: new Date().toISOString(),
       }]);
       load();
@@ -130,7 +129,7 @@ export default function Playground() {
             {messages.map((m, i) => <ChatMessage key={i} message={m} />)}
             {sending && (
               <div className="flex items-center gap-2 text-xs text-slate-500 py-2">
-                <Loader2 className="w-4 h-4 animate-spin text-teal-600" /> Searching knowledge base and synthesizing...
+                <Loader2 className="w-4 h-4 animate-spin text-teal-600" /> Preparing your answer...
               </div>
             )}
             <div ref={endRef} />

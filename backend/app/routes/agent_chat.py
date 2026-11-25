@@ -4,7 +4,6 @@ Both use the same RAG pipeline with the agent's own instructions,
 language, provider and model, searching only that agent's collection.
 """
 import hashlib
-import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -12,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.db import Agent, ApiKey, Conversation, Message, Subscription, UsageEvent, ensure_free_subscription, get_db
 from app.deps import get_current_user, get_workspace_or_404
-from app.models.schemas import DocumentSource, PublicChatRequest, TenantChatRequest, TenantChatResponse
+from app.models.schemas import PublicChatRequest, TenantChatRequest, TenantChatResponse
 from app.services.rag_agent import rag_agent_service
 
 tenant_router = APIRouter(prefix="/api/workspaces", tags=["tenant-chat"])
@@ -69,11 +68,11 @@ async def _run_chat(db: Session, agent: Agent, workspace_id: str, sub: Subscript
         question=message.strip(), history=history, agent_config=_agent_config(agent), agent_id=agent.id)
 
     db.add(Message(conversation_id=conversation.id, role="assistant", content=result.response,
-                   sources=json.dumps([s.model_dump() for s in result.sources])))
+                   sources="[]"))
     db.commit()
     _record_usage(db, workspace_id, agent.id, sub)
     return TenantChatResponse(conversation_id=conversation.id, response=result.response,
-                              sources=result.sources, agent_steps=result.agent_steps)
+                              sources=[], agent_steps=[])
 
 
 @tenant_router.post("/{workspace_id}/agents/{agent_id}/chat", response_model=TenantChatResponse)

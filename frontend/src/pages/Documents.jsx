@@ -1,57 +1,54 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { Files, RefreshCw, AlertCircle, Search } from 'lucide-react';
-import FileUpload from '../components/FileUpload';
 import DocumentCard from '../components/DocumentCard';
-import apiService from '../services/api';
+import apiService, { apiError } from '../services/api';
+import { useWorkspace } from '../context/WorkspaceContext';
 
 export default function Documents() {
+  const { selectedId } = useWorkspace();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    fetchDocuments();
-  }, []);
-
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
+    if (!selectedId) { setDocuments([]); setLoading(false); return; }
     try {
       setLoading(true);
       setError(null);
-      const data = await apiService.getDocuments();
-      setDocuments(data || []);
+      setDocuments([]);
+      const docs = await apiService.getWorkspaceDocuments(selectedId);
+      setDocuments(docs || []);
     } catch (err) {
-      setError('Failed to fetch documents. Verify that the backend server is running.');
+      setError(apiError(err, 'Failed to fetch documents. Verify that the backend server is running.'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedId]);
 
-  const handleUploadSuccess = async (file, onProgress) => {
-    const response = await apiService.uploadDocument(file, onProgress);
-    await fetchDocuments();
-    return response;
-  };
+  useEffect(() => { fetchDocuments(); }, [fetchDocuments]);
 
   const handleDelete = async (documentId) => {
-    if (!window.confirm('Are you sure you want to delete this document from the vector store?')) {
+    const doc = documents.find((d) => d.id === documentId);
+    if (!doc?.agent_id) return;
+    if (!window.confirm('Are you sure you want to delete this document?')) {
       return;
     }
-
     try {
       setDeletingId(documentId);
-      await apiService.deleteDocument(documentId);
+      await apiService.deleteAgentDocument(selectedId, doc.agent_id, documentId);
       setDocuments((prev) => prev.filter((d) => d.id !== documentId));
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to delete document.');
+      alert(apiError(err, 'Failed to delete document.'));
     } finally {
       setDeletingId(null);
     }
   };
 
   const filteredDocuments = documents.filter((doc) =>
-    doc.filename.toLowerCase().includes(searchQuery.toLowerCase())
+    (doc.filename || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -63,7 +60,7 @@ export default function Documents() {
             Knowledge Documents
           </h2>
           <p className="text-slate-500 text-sm mt-1">
-            Upload, manage, and inspect documents vectorized into ChromaDB for RAG context.
+            All documents in this workspace, across its agents.
           </p>
         </div>
 
@@ -77,9 +74,10 @@ export default function Documents() {
         </button>
       </div>
 
-      {/* File Upload Zone */}
-      <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/90 shadow-xs">
-        <FileUpload onUploadSuccess={handleUploadSuccess} />
+      {/* Upload happens per agent, so files always belong to one workspace and one agent */}
+      <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <p className="text-sm text-slate-600">Documents belong to an agent in this workspace. Add files or website URLs from an agent knowledge base.</p>
+        <Link to="/agents" className="inline-flex items-center justify-center bg-teal-700 hover:bg-teal-800 text-white font-semibold px-4 py-2 rounded-xl text-sm shrink-0">Go to Agents</Link>
       </div>
 
       {/* Error alert */}
