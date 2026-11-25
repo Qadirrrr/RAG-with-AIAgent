@@ -136,12 +136,21 @@ class Agent(Base):
     show_citations = Column(Boolean, default=False, nullable=False)
     # Comma-separated allowlist of agent-mode tools (see services/agent_engine.py).
     tools_enabled = Column(Text, default="knowledge_search,list_documents,calculator,current_datetime", nullable=False)
+    # Website widget appearance (see GET /api/public/widget-config). An empty
+    # widget_title means the widget shows the chatbot's name instead.
+    widget_title = Column(String(255), default="", nullable=False)
+    widget_welcome_message = Column(Text, default="Hello! How can I help you?", nullable=False)
+    widget_color = Column(String(16), default="#0F766E", nullable=False)
+    widget_position = Column(String(16), default="right", nullable=False)
+    widget_icon = Column(String(16), default="chat", nullable=False)
+    widget_icon_url = Column(String(1024), default="", nullable=False)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
 
     workspace = relationship("Workspace", back_populates="agents")
     documents = relationship("Document", back_populates="agent", cascade="all, delete-orphan")
     conversations = relationship("Conversation", back_populates="agent", cascade="all, delete-orphan")
     api_keys = relationship("ApiKey", back_populates="agent", cascade="all, delete-orphan")
+    usage_events = relationship("UsageEvent", back_populates="agent", cascade="all, delete-orphan")
 
 
 class Document(Base):
@@ -217,6 +226,8 @@ class UsageEvent(Base):
     tokens_or_count = Column(Integer, default=1, nullable=False)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
 
+    agent = relationship("Agent", back_populates="usage_events")
+
 
 def get_db():
     db = SessionLocal()
@@ -245,6 +256,12 @@ _AGENT_COLUMN_DDL = {
     "mode": "VARCHAR(16) NOT NULL DEFAULT 'rag'",
     "show_citations": "BOOLEAN NOT NULL DEFAULT {false}",
     "tools_enabled": "TEXT NOT NULL DEFAULT 'knowledge_search,list_documents,calculator,current_datetime'",
+    "widget_title": "VARCHAR(255) NOT NULL DEFAULT ''",
+    "widget_welcome_message": "TEXT NOT NULL DEFAULT 'Hello! How can I help you?'",
+    "widget_color": "VARCHAR(16) NOT NULL DEFAULT '#0F766E'",
+    "widget_position": "VARCHAR(16) NOT NULL DEFAULT 'right'",
+    "widget_icon": "VARCHAR(16) NOT NULL DEFAULT 'chat'",
+    "widget_icon_url": "VARCHAR(1024) NOT NULL DEFAULT ''",
 }
 
 

@@ -380,3 +380,197 @@ def test_agent_mode_chat_without_llm_falls_back_gracefully(client):
     assert r.status_code == 200, r.text
     assert "not available" in r.json()["response"]
     assert r.json().get("sources") == []
+
+
+def test_delete_plain_chatbot(client):
+    """Deleting a chatbot with no data succeeds and the chatbot is gone."""
+    token, _ = _auth(client, "deleteplain@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    ws_id = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+    agent = client.post(f"/api/workspaces/{ws_id}/agents", headers=h,
+                        json={"name": "Delete Me Bot"}).json()
+
+    r = client.delete(f"/api/workspaces/{ws_id}/agents/{agent['id']}", headers=h)
+    assert r.status_code == 200, r.text
+
+    r = client.get(f"/api/workspaces/{ws_id}/agents/{agent['id']}", headers=h)
+    assert r.status_code == 404, r.text
+    r = client.get(f"/api/workspaces/{ws_id}/agents", headers=h)
+    assert all(a["id"] != agent["id"] for a in r.json())
+
+
+def test_delete_chatbot_with_data_keeps_sibling(client):
+    """Regression: deleting a USED chatbot must not 500.
+
+    Uploading and chatting create usage_events rows whose agent_id foreign
+    key used to block the delete with an FK constraint violation on
+    Postgres. The delete must clean up the chatbot's documents,
+    conversations and usage events, and leave a sibling chatbot untouched.
+    """
+    from app.db import Conversation, Document, SessionLocal, Subscription, UsageEvent
+
+    token, _ = _auth(client, "deletebusy@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    ws_id = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+
+    # The Free plan allows 1 agent; raise this workspace's limit in the DB
+    # so the sibling chatbot can exist in the same workspace.
+    db = SessionLocal()
+    sub = db.query(Subscription).filter(Subscription.workspace_id == ws_id).first()
+    sub.agent_limit = 5
+    db.commit()
+    db.close()
+
+    busy = client.post(f"/api/workspaces/{ws_id}/agents", headers=h,
+                       json={"name": "Busy Bot"}).json()
+    sibling = client.post(f"/api/workspaces/{ws_id}/agents", headers=h,
+                          json={"name": "Sibling Bot"}).json()
+
+    # Give Busy Bot a document and a chat (both create usage events).
+    r = client.post(f"/api/workspaces/{ws_id}/agents/{busy['id']}/documents", headers=h,
+                    files={"file": ("notes.txt", b"Busy Bot knowledge.", "text/plain")})
+    assert r.status_code == 200, r.text
+    r = client.post(f"/api/workspaces/{ws_id}/agents/{busy['id']}/chat", headers=h,
+                    json={"message": "Hello"})
+    assert r.status_code == 200, r.text
+
+    db = SessionLocal()
+    assert db.query(UsageEvent).filter(UsageEvent.agent_id == busy["id"]).count() >= 1
+    assert db.query(Document).filter(Document.agent_id == busy["id"]).count() == 1
+    db.close()
+
+    r = client.delete(f"/api/workspaces/{ws_id}/agents/{busy['id']}", headers=h)
+    assert r.status_code == 200, r.text
+
+    r = client.get(f"/api/workspaces/{ws_id}/agents/{busy['id']}", headers=h)
+    assert r.status_code == 404, r.text
+
+    # All of Busy Bot's own rows are gone.
+    db = SessionLocal()
+    assert db.query(UsageEvent).filter(UsageEvent.agent_id == busy["id"]).count() == 0
+    assert db.query(Document).filter(Document.agent_id == busy["id"]).count() == 0
+    assert db.query(Conversation).filter(Conversation.agent_id == busy["id"]).count() == 0
+    db.close()
+
+    # The sibling chatbot in the same workspace still works.
+    r = client.get(f"/api/workspaces/{ws_id}/agents/{sibling['id']}", headers=h)
+    assert r.status_code == 200, r.text
+    r = client.post(f"/api/workspaces/{ws_id}/agents/{sibling['id']}/chat", headers=h,
+                    json={"message": "Hello"})
+    assert r.status_code == 200, r.text
+
+
+def test_widget_settings_round_trip_and_validation(client):
+    """Widget appearance fields save on create/update and are validated."""
+    token, _ = _auth(client, "widgetform@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    ws_id = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+
+    r = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={
+        "name": "Widget Bot",
+        "widget_title": "Ask CloudNest",
+        "widget_welcome_message": "Hi there! Ask me about our VPS plans.",
+        "widget_color": "#2563EB",
+        "widget_position": "left",
+        "widget_icon": "custom",
+        "widget_icon_url": "https://example.com/logo.png"})
+    assert r.status_code == 200, r.text
+    agent = r.json()
+    assert agent["widget_title"] == "Ask CloudNest"
+    assert agent["widget_welcome_message"] == "Hi there! Ask me about our VPS plans."
+    assert agent["widget_color"] == "#2563EB"
+    assert agent["widget_position"] == "left"
+    assert agent["widget_icon"] == "custom"
+    assert agent["widget_icon_url"] == "https://example.com/logo.png"
+
+    # Update changes only the widget fields sent.
+    r = client.patch(f"/api/workspaces/{ws_id}/agents/{agent['id']}", headers=h, json={
+        "widget_color": "#0F766E", "widget_position": "right", "widget_icon": "robot"})
+    assert r.status_code == 200, r.text
+    updated = r.json()
+    assert updated["widget_color"] == "#0F766E"
+    assert updated["widget_position"] == "right"
+    assert updated["widget_icon"] == "robot"
+    assert updated["widget_title"] == "Ask CloudNest"
+
+    # Invalid values are rejected on create and update.
+    r = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={
+        "name": "Bad Color Bot", "widget_color": "teal"})
+    assert r.status_code == 400, r.text
+    r = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={
+        "name": "Bad Position Bot", "widget_position": "top"})
+    assert r.status_code == 400, r.text
+    r = client.patch(f"/api/workspaces/{ws_id}/agents/{agent['id']}", headers=h,
+                     json={"widget_color": "#12345"})
+    assert r.status_code == 400, r.text
+    r = client.patch(f"/api/workspaces/{ws_id}/agents/{agent['id']}", headers=h,
+                     json={"widget_icon": "smiley"})
+    assert r.status_code == 400, r.text
+
+
+def test_widget_config_endpoint(client):
+    """GET /api/public/widget-config: key auth, saved values, deactivated 403."""
+    token, _ = _auth(client, "widgetconfig@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    ws_id = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+    agent = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={
+        "name": "Config Bot",
+        "widget_welcome_message": "Welcome to our store!",
+        "widget_color": "#B45309",
+        "widget_position": "left",
+        "widget_icon": "robot"}).json()
+    raw_key = client.post(f"/api/workspaces/{ws_id}/agents/{agent['id']}/api-keys",
+                          headers=h, json={"name": "Website"}).json()["api_key"]
+
+    # No key: 401. Wrong key: 401.
+    r = client.get("/api/public/widget-config")
+    assert r.status_code == 401, r.text
+    r = client.get("/api/public/widget-config", headers={"X-Agent-Key": "sk-live-nope"})
+    assert r.status_code == 401, r.text
+
+    # Valid key: saved values come back; empty widget_title falls back to
+    # the chatbot name, and no internals leak.
+    r = client.get("/api/public/widget-config", headers={"X-Agent-Key": raw_key})
+    assert r.status_code == 200, r.text
+    cfg = r.json()
+    assert cfg["title"] == "Config Bot"
+    assert cfg["agent_name"] == "Config Bot"
+    assert cfg["welcome_message"] == "Welcome to our store!"
+    assert cfg["color"] == "#B45309"
+    assert cfg["position"] == "left"
+    assert cfg["icon"] == "robot"
+    assert cfg["icon_url"] == ""
+    assert "instructions" not in cfg
+    assert "documents" not in cfg
+
+    # A custom widget_title wins over the chatbot name.
+    r = client.patch(f"/api/workspaces/{ws_id}/agents/{agent['id']}", headers=h,
+                     json={"widget_title": "Store Help"})
+    assert r.status_code == 200, r.text
+    r = client.get("/api/public/widget-config", headers={"X-Agent-Key": raw_key})
+    assert r.json()["title"] == "Store Help"
+
+    # Deactivated chatbot: 403, same as public chat.
+    r = client.post(f"/api/workspaces/{ws_id}/agents/{agent['id']}/toggle-active", headers=h)
+    assert r.json()["is_active"] is False
+    r = client.get("/api/public/widget-config", headers={"X-Agent-Key": raw_key})
+    assert r.status_code == 403, r.text
+
+
+def test_delete_chatbot_in_other_workspace_returns_404(client):
+    """Deleting under the wrong workspace id is a 404 and deletes nothing."""
+    token, _ = _auth(client, "deletecross@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    ws1 = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+    r = client.post("/api/workspaces", headers=h, json={"name": "Second Project"})
+    assert r.status_code == 200, r.text
+    ws2 = r.json()["id"]
+
+    agent = client.post(f"/api/workspaces/{ws1}/agents", headers=h,
+                        json={"name": "Project One Bot"}).json()
+
+    r = client.delete(f"/api/workspaces/{ws2}/agents/{agent['id']}", headers=h)
+    assert r.status_code == 404, r.text
+
+    r = client.get(f"/api/workspaces/{ws1}/agents/{agent['id']}", headers=h)
+    assert r.status_code == 200, r.text

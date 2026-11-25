@@ -1,8 +1,11 @@
 """Agent CRUD inside a workspace. Enforces provider/model combos and plan limits."""
+import os
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.db import Agent, ensure_free_subscription, get_db
+from app.db import Agent, UsageEvent, ensure_free_subscription, get_db
 from app.deps import get_current_user, get_workspace_or_404
 from app.models.schemas import AgentCreate, AgentOut, AgentUpdate
 from app.services.agent_engine import ALL_TOOL_NAMES
@@ -18,6 +21,12 @@ def _agent_out(a: Agent) -> AgentOut:
                     description=a.description or "", is_active=bool(a.is_active),
                     mode=a.mode or "rag", show_citations=bool(a.show_citations),
                     tools_enabled=a.tools_enabled or "",
+                    widget_title=a.widget_title or "",
+                    widget_welcome_message=a.widget_welcome_message or "Hello! How can I help you?",
+                    widget_color=a.widget_color or "#0F766E",
+                    widget_position=a.widget_position or "right",
+                    widget_icon=a.widget_icon or "chat",
+                    widget_icon_url=a.widget_icon_url or "",
                     created_at=a.created_at)
 
 
@@ -36,6 +45,23 @@ def _validate_mode(mode: str):
     if mode not in ("rag", "agent"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Mode must be 'rag' (strict RAG) or 'agent' (RAG + Agent).")
+
+
+_WIDGET_COLOR_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+WIDGET_POSITIONS = ("right", "left")
+WIDGET_ICONS = ("chat", "robot", "custom")
+
+
+def _validate_widget_settings(color: str, position: str, icon: str):
+    if not _WIDGET_COLOR_RE.match(color or ""):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Widget color must be a hex color like #0F766E.")
+    if position not in WIDGET_POSITIONS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Widget position must be 'right' or 'left'.")
+    if icon not in WIDGET_ICONS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Widget icon must be 'chat', 'robot' or 'custom'.")
 
 
 def _validate_tools_enabled(raw: str):
@@ -60,6 +86,7 @@ def create_agent(workspace_id: str, payload: AgentCreate, user=Depends(get_curre
     _validate_provider_model(payload.provider, payload.model)
     _validate_mode(payload.mode or "rag")
     _validate_tools_enabled(payload.tools_enabled or "")
+    _validate_widget_settings(payload.widget_color, payload.widget_position, payload.widget_icon)
     sub = ensure_free_subscription(db, ws.id)
     count = db.query(Agent).filter(Agent.workspace_id == ws.id).count()
     if count >= sub.agent_limit:
@@ -70,7 +97,12 @@ def create_agent(workspace_id: str, payload: AgentCreate, user=Depends(get_curre
                   temperature=payload.temperature, greeting=payload.greeting or "",
                   description=payload.description or "", is_active=bool(payload.is_active),
                   mode=payload.mode or "rag", show_citations=bool(payload.show_citations),
-                  tools_enabled=payload.tools_enabled or "")
+                  tools_enabled=payload.tools_enabled or "",
+                  widget_title=(payload.widget_title or "").strip(),
+                  widget_welcome_message=payload.widget_welcome_message or "Hello! How can I help you?",
+                  widget_color=payload.widget_color, widget_position=payload.widget_position,
+                  widget_icon=payload.widget_icon,
+                  widget_icon_url=(payload.widget_icon_url or "").strip())
     db.add(agent)
     db.commit()
     db.refresh(agent)
@@ -100,8 +132,14 @@ def update_agent(workspace_id: str, agent_id: str, payload: AgentUpdate, user=De
         _validate_mode(payload.mode)
     if payload.tools_enabled is not None:
         _validate_tools_enabled(payload.tools_enabled)
+    _validate_widget_settings(
+        payload.widget_color if payload.widget_color is not None else (agent.widget_color or "#0F766E"),
+        payload.widget_position if payload.widget_position is not None else (agent.widget_position or "right"),
+        payload.widget_icon if payload.widget_icon is not None else (agent.widget_icon or "chat"))
     for field in ("name", "instructions", "language", "provider", "model", "temperature", "greeting",
-                  "description", "is_active", "mode", "show_citations", "tools_enabled"):
+                  "description", "is_active", "mode", "show_citations", "tools_enabled",
+                  "widget_title", "widget_welcome_message", "widget_color", "widget_position",
+                  "widget_icon", "widget_icon_url"):
         value = getattr(payload, field)
         if value is not None:
             setattr(agent, field, value.strip() if isinstance(value, str) else value)
@@ -130,6 +168,21 @@ def delete_agent(workspace_id: str, agent_id: str, user=Depends(get_current_user
         tenant_vector_store.delete_agent_collection(agent.id)
     except Exception:
         pass
+    # Best effort: remove this agent's uploaded files (same pattern as the
+    # single-document delete in routes/knowledge.py).
+    for doc in list(agent.documents):
+        if doc.file_path and os.path.exists(doc.file_path):
+            try:
+                os.remove(doc.file_path)
+            except Exception:
+                pass
+    # Usage events carry an agent_id foreign key but are workspace-level
+    # analytics rows; delete this agent's events explicitly in the same
+    # transaction. Without this the delete fails with an FK constraint
+    # violation (HTTP 500) for any chatbot that has ever been used.
+    # The agent's documents, conversations (with messages) and API keys are
+    # removed by the ORM delete-orphan cascades on the Agent relationships.
+    db.query(UsageEvent).filter(UsageEvent.agent_id == agent.id).delete(synchronize_session=False)
     db.delete(agent)
     db.commit()
     return {"message": "Agent deleted successfully", "id": agent_id}

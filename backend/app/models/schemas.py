@@ -115,6 +115,12 @@ class AgentCreate(BaseModel):
     mode: str = "rag"
     show_citations: bool = False
     tools_enabled: str = "knowledge_search,list_documents,calculator,current_datetime"
+    widget_title: str = ""
+    widget_welcome_message: str = "Hello! How can I help you?"
+    widget_color: str = "#0F766E"
+    widget_position: str = "right"
+    widget_icon: str = "chat"
+    widget_icon_url: str = ""
 
 
 class AgentUpdate(BaseModel):
@@ -130,6 +136,12 @@ class AgentUpdate(BaseModel):
     mode: Optional[str] = None
     show_citations: Optional[bool] = None
     tools_enabled: Optional[str] = None
+    widget_title: Optional[str] = None
+    widget_welcome_message: Optional[str] = None
+    widget_color: Optional[str] = None
+    widget_position: Optional[str] = None
+    widget_icon: Optional[str] = None
+    widget_icon_url: Optional[str] = None
 
 
 class AgentOut(BaseModel):
@@ -147,7 +159,28 @@ class AgentOut(BaseModel):
     mode: str = "rag"
     show_citations: bool = False
     tools_enabled: str = "knowledge_search,list_documents,calculator,current_datetime"
+    widget_title: str = ""
+    widget_welcome_message: str = "Hello! How can I help you?"
+    widget_color: str = "#0F766E"
+    widget_position: str = "right"
+    widget_icon: str = "chat"
+    widget_icon_url: str = ""
     created_at: Optional[datetime] = None
+
+
+class WidgetConfigOut(BaseModel):
+    """Public appearance config for the embeddable website widget.
+
+    Returned by GET /api/public/widget-config. Contains appearance only:
+    no instructions, documents or other agent internals.
+    """
+    title: str
+    welcome_message: str
+    color: str
+    position: str
+    icon: str
+    icon_url: str = ""
+    agent_name: str
 
 
 class TenantDocumentOut(BaseModel):

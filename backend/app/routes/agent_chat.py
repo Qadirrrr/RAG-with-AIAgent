@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.db import Agent, ApiKey, Conversation, Message, Subscription, UsageEvent, ensure_free_subscription, get_db
 from app.deps import get_current_user, get_workspace_or_404
-from app.models.schemas import PublicChatRequest, TenantChatRequest, TenantChatResponse
+from app.models.schemas import PublicChatRequest, TenantChatRequest, TenantChatResponse, WidgetConfigOut
 from app.services.rag_agent import rag_agent_service
 
 tenant_router = APIRouter(prefix="/api/workspaces", tags=["tenant-chat"])
@@ -99,8 +99,8 @@ async def tenant_chat(workspace_id: str, agent_id: str, payload: TenantChatReque
     return await _run_chat(db, agent, ws.id, sub, payload.message, payload.conversation_id, payload.channel or "playground")
 
 
-@public_router.post("/chat", response_model=TenantChatResponse)
-async def public_chat(payload: PublicChatRequest, request: Request, db: Session = Depends(get_db)):
+def _api_key_or_401(db: Session, request: Request) -> ApiKey:
+    """Resolve the X-Agent-Key header (or ?key=) to an active ApiKey row."""
     provided = request.headers.get("X-Agent-Key") or request.query_params.get("key") or ""
     if not provided:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
@@ -109,6 +109,39 @@ async def public_chat(payload: PublicChatRequest, request: Request, db: Session 
     api_key = db.query(ApiKey).filter(ApiKey.key_hash == key_hash, ApiKey.is_active == True).first()
     if not api_key:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key.")
+    return api_key
+
+
+@public_router.get("/widget-config", response_model=WidgetConfigOut)
+def widget_config(request: Request, db: Session = Depends(get_db)):
+    """Appearance config for the embeddable widget, keyed like public chat.
+
+    Returns appearance only (title, welcome message, color, position, icon)
+    so the widget can style itself per chatbot. No instructions, documents
+    or other agent internals are exposed.
+    """
+    api_key = _api_key_or_401(db, request)
+    agent = db.query(Agent).filter(Agent.id == api_key.agent_id).first()
+    if not agent:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key.")
+    _require_active(agent)
+    icon = agent.widget_icon or "chat"
+    icon_url = agent.widget_icon_url or ""
+    if icon == "custom" and not icon_url:
+        icon = "chat"
+    return WidgetConfigOut(
+        title=(agent.widget_title or "").strip() or agent.name,
+        welcome_message=agent.widget_welcome_message or "Hello! How can I help you?",
+        color=agent.widget_color or "#0F766E",
+        position=agent.widget_position or "right",
+        icon=icon,
+        icon_url=icon_url,
+        agent_name=agent.name)
+
+
+@public_router.post("/chat", response_model=TenantChatResponse)
+async def public_chat(payload: PublicChatRequest, request: Request, db: Session = Depends(get_db)):
+    api_key = _api_key_or_401(db, request)
     agent = db.query(Agent).filter(Agent.id == payload.agent_id).first()
     if not agent or agent.id != api_key.agent_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="API key does not match this agent.")

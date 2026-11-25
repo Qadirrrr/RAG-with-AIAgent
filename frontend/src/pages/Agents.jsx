@@ -20,7 +20,7 @@ const TOOL_OPTIONS = [
 ];
 const ALL_TOOLS = TOOL_OPTIONS.map((t) => t.value);
 
-const emptyForm = { name: '', description: '', instructions: '', language: 'en', provider: 'ollama', model: 'qwen2.5:7b', temperature: 0.7, greeting: '', mode: 'rag', show_citations: false, tools: [...ALL_TOOLS] };
+const emptyForm = { name: '', description: '', instructions: '', language: 'en', provider: 'ollama', model: 'qwen2.5:7b', temperature: 0.7, greeting: '', mode: 'rag', show_citations: false, tools: [...ALL_TOOLS], widget_title: '', widget_welcome_message: 'Hello! How can I help you?', widget_color: '#0F766E', widget_position: 'right', widget_icon: 'chat', widget_icon_url: '' };
 
 export default function Agents() {
   const { selectedId, workspaces, createWorkspace } = useWorkspace();
@@ -75,6 +75,12 @@ export default function Agents() {
       mode: agent.mode || 'rag',
       show_citations: Boolean(agent.show_citations),
       tools: agent.tools_enabled ? agent.tools_enabled.split(',').map((s) => s.trim()).filter((s) => ALL_TOOLS.includes(s)) : [...ALL_TOOLS],
+      widget_title: agent.widget_title || '',
+      widget_welcome_message: agent.widget_welcome_message || 'Hello! How can I help you?',
+      widget_color: /^#[0-9a-fA-F]{6}$/.test(agent.widget_color || '') ? agent.widget_color : '#0F766E',
+      widget_position: agent.widget_position === 'left' ? 'left' : 'right',
+      widget_icon: ['chat', 'robot', 'custom'].includes(agent.widget_icon) ? agent.widget_icon : 'chat',
+      widget_icon_url: agent.widget_icon_url || '',
     });
     setFormError(null);
     setShowModal(true);
@@ -232,6 +238,77 @@ export default function Agents() {
             <div>
               <label className={labelCls}>Greeting message</label>
               <input className={inputCls} value={form.greeting} onChange={(e) => setForm({ ...form, greeting: e.target.value })} placeholder="Hello! How can I help you today?" />
+            </div>
+            <div className="border-t border-slate-100 pt-4 space-y-4">
+              <div>
+                <h4 className="text-sm font-semibold text-slate-800">Website widget</h4>
+                <p className="text-xs text-slate-500 mt-0.5">How the chat widget looks on your website. Changes apply to the embedded widget automatically.</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={labelCls}>Widget title</label>
+                  <input className={inputCls} value={form.widget_title} onChange={(e) => setForm({ ...form, widget_title: e.target.value })} placeholder={form.name || 'Chatbot name'} />
+                  <p className="text-xs text-slate-500 mt-1">Leave empty to show the chatbot name.</p>
+                </div>
+                <div>
+                  <label className={labelCls}>Widget color</label>
+                  <div className="flex items-center gap-2">
+                    <input type="color" className="w-11 h-10 shrink-0 p-0.5 bg-white border border-slate-300 rounded-lg cursor-pointer" value={form.widget_color} onChange={(e) => setForm({ ...form, widget_color: e.target.value })} />
+                    <input className={inputCls} value={form.widget_color} onChange={(e) => setForm({ ...form, widget_color: e.target.value })} placeholder="#0F766E" />
+                  </div>
+                </div>
+                <div>
+                  <label className={labelCls}>Position</label>
+                  <select className={inputCls} value={form.widget_position} onChange={(e) => setForm({ ...form, widget_position: e.target.value })}>
+                    <option value="right">Bottom right</option>
+                    <option value="left">Bottom left</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Icon</label>
+                  <select className={inputCls} value={form.widget_icon} onChange={(e) => setForm({ ...form, widget_icon: e.target.value })}>
+                    <option value="chat">Chat bubble</option>
+                    <option value="robot">Robot</option>
+                    <option value="custom">Custom image</option>
+                  </select>
+                </div>
+              </div>
+              {form.widget_icon === 'custom' && (
+                <div>
+                  <label className={labelCls}>Icon image URL</label>
+                  <input className={inputCls} value={form.widget_icon_url} onChange={(e) => setForm({ ...form, widget_icon_url: e.target.value })} placeholder="https://yourwebsite.com/logo.png" />
+                  <p className="text-xs text-slate-500 mt-1">A square image works best. If empty, the chat bubble icon is used.</p>
+                </div>
+              )}
+              <div>
+                <label className={labelCls}>Welcome message</label>
+                <input className={inputCls} value={form.widget_welcome_message} onChange={(e) => setForm({ ...form, widget_welcome_message: e.target.value })} placeholder="Hello! How can I help you?" />
+                <p className="text-xs text-slate-500 mt-1">The first message a visitor sees when they open the widget.</p>
+              </div>
+              <div>
+                <label className={labelCls}>Preview</label>
+                <div className="relative h-52 rounded-xl border border-slate-200 bg-slate-50 overflow-hidden">
+                  <div className={`absolute bottom-16 w-60 max-w-[75%] rounded-2xl bg-white border border-slate-200 shadow-lg overflow-hidden ${form.widget_position === 'left' ? 'left-4' : 'right-4'}`}>
+                    <div className="px-4 py-3 text-white text-sm font-semibold truncate" style={{ background: form.widget_color }}>
+                      {form.widget_title || form.name || 'Chatbot name'}
+                    </div>
+                    <div className="p-3">
+                      <div className="inline-block max-w-full bg-slate-100 text-slate-700 text-xs leading-relaxed px-3 py-2 rounded-xl">
+                        {form.widget_welcome_message || 'Hello! How can I help you?'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`absolute bottom-4 w-12 h-12 rounded-full shadow-lg flex items-center justify-center overflow-hidden ${form.widget_position === 'left' ? 'left-4' : 'right-4'}`} style={{ background: form.widget_color }}>
+                    {form.widget_icon === 'custom' && form.widget_icon_url ? (
+                      <img src={form.widget_icon_url} alt="" className="w-full h-full object-cover" />
+                    ) : form.widget_icon === 'robot' ? (
+                      <Bot className="w-6 h-6 text-white" />
+                    ) : (
+                      <MessageSquare className="w-6 h-6 text-white" />
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
             {form.mode === 'agent' && (
               <div>
