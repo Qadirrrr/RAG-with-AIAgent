@@ -143,11 +143,10 @@ export default function Chat() {
             <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-teal-600 shadow-xs animate-pulse">
               <Bot className="w-4 h-4" />
             </div>
-            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl px-4 py-3 flex items-center space-x-2">
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl px-4 py-3 flex items-center space-x-2" aria-label="Loading">
               <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" />
               <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce [animation-delay:-.3s]" />
               <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce [animation-delay:-.5s]" />
-              <span className="text-xs text-slate-600 font-medium ml-2">Searching knowledge base and synthesizing...</span>
             </div>
           </div>
         )}

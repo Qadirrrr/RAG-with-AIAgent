@@ -109,7 +109,8 @@ class RAGAgentService:
                 "1. Give a concise, accurate, direct answer using only the knowledge below. Do not add anything that is not in the knowledge.\n"
                 "2. Never mention documents, files, pages, sources, citations, or where an answer came from. Never write phrases such as according to, as stated in, the document says, or from the source.\n"
                 "3. If the knowledge below does not cover the question, say politely: 'I do not have that information.' Do not guess or invent an answer.\n"
-                "4. Use a professional tone and avoid unnecessary filler words."
+                "4. Use a professional tone and avoid unnecessary filler words.\n"
+                "5. Format the answer cleanly with short paragraphs and simple bullet points. Do not use asterisks, hashes, underscores, or em dashes for formatting."
             )
             user_prompt = f"KNOWLEDGE:\n{context_text}\n\nUSER QUESTION:\n{question}"
         else:

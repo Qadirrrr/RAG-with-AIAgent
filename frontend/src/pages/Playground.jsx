@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Bot, Plus, History, Files, Loader2 } from 'lucide-react';
+import { Bot, Plus, History, Files } from 'lucide-react';
 import apiService, { apiError } from '../services/api';
 import { useWorkspace } from '../context/WorkspaceContext';
 import ChatMessage from '../components/ChatMessage';
@@ -128,8 +128,12 @@ export default function Playground() {
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
             {messages.map((m, i) => <ChatMessage key={i} message={m} />)}
             {sending && (
-              <div className="flex items-center gap-2 text-xs text-slate-500 py-2">
-                <Loader2 className="w-4 h-4 animate-spin text-teal-600" /> Preparing your answer...
+              <div className="flex justify-start py-2" aria-label="Loading">
+                <div className="bg-slate-50 border border-slate-200/80 rounded-2xl px-4 py-3 flex items-center space-x-2">
+                  <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" />
+                  <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce [animation-delay:-.3s]" />
+                  <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce [animation-delay:-.5s]" />
+                </div>
               </div>
             )}
             <div ref={endRef} />

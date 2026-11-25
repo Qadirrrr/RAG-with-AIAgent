@@ -42,7 +42,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 <Bot className="w-5 h-5" />
               </div>
               <div>
-                <span className="font-bold text-white tracking-tight text-base block leading-tight">RAG Agent</span>
+                <span className="font-bold text-white tracking-tight text-[15px] block leading-tight">RAG Agent</span>
                 <span className="text-[11px] font-medium text-white/60">SaaS Platform</span>
               </div>
             </div>
@@ -64,7 +64,7 @@ export default function Sidebar({ isOpen, onClose }) {
                   to={item.path}
                   end={item.path === '/'}
                   onClick={() => onClose && onClose()}
-                  className={({ isActive }) => `flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? 'bg-white text-[#0F2A3D] font-semibold shadow-sm' : 'text-white/75 hover:text-white hover:bg-white/10'}`}
+                  className={({ isActive }) => `flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all ${isActive ? 'bg-teal-700 text-white font-semibold shadow-sm' : 'text-white/75 hover:text-white hover:bg-white/10'}`}
                 >
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   <span>{item.name}</span>
@@ -75,7 +75,7 @@ export default function Sidebar({ isOpen, onClose }) {
               <NavLink
                 to="/admin"
                 onClick={() => onClose && onClose()}
-                className={({ isActive }) => `flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${isActive ? 'bg-white text-[#0F2A3D] font-semibold shadow-sm' : 'text-white/75 hover:text-white hover:bg-white/10'}`}
+                className={({ isActive }) => `flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all ${isActive ? 'bg-teal-700 text-white font-semibold shadow-sm' : 'text-white/75 hover:text-white hover:bg-white/10'}`}
               >
                 <ShieldCheck className="w-5 h-5 flex-shrink-0" />
                 <span>Admin</span>
@@ -86,11 +86,11 @@ export default function Sidebar({ isOpen, onClose }) {
 
         <div className="p-4 border-t border-white/25">
           <div className="flex items-center gap-3 px-1">
-            <div className="w-9 h-9 rounded-full bg-white text-[#0F2A3D] flex items-center justify-center font-bold text-sm shrink-0">
+            <div className="w-9 h-9 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-[13px] shrink-0">
               {(user?.name || user?.email || 'U').charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-white truncate">{user?.name || 'Account'}</p>
+              <p className="text-[13px] font-semibold text-white truncate">{user?.name || 'Account'}</p>
               <p className="text-xs text-white/60 truncate">{user?.email || ''}</p>
             </div>
             <button onClick={handleLogout} title="Log out" className="p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10">
