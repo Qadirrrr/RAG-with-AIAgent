@@ -30,18 +30,18 @@ export default function WorkspaceSwitcher() {
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-left"
+        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-white/25 bg-white/10 hover:bg-white/15 text-left"
       >
         <span className="w-8 h-8 rounded-lg bg-teal-700 text-white flex items-center justify-center shrink-0">
           <Building2 className="w-4 h-4" />
         </span>
         <span className="flex-1 min-w-0">
-          <span className="block text-xs text-slate-400 font-medium">Workspace</span>
-          <span className="block text-[13px] font-semibold text-slate-800 truncate">
+          <span className="block text-[11px] text-white/60 font-medium">Workspace</span>
+          <span className="block text-[13px] font-semibold text-white truncate">
             {selected ? selected.name : loading ? 'Loading...' : 'No workspace yet'}
           </span>
         </span>
-        <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+        <ChevronDown className="w-4 h-4 text-white/60 shrink-0" />
       </button>
 
       {open && (
