@@ -574,3 +574,94 @@ def test_delete_chatbot_in_other_workspace_returns_404(client):
 
     r = client.get(f"/api/workspaces/{ws1}/agents/{agent['id']}", headers=h)
     assert r.status_code == 200, r.text
+
+
+def _chat_conversation_id(client, h, ws_id, agent_id, message="Hello"):
+    r = client.post(f"/api/workspaces/{ws_id}/agents/{agent_id}/chat", headers=h,
+                    json={"message": message})
+    assert r.status_code == 200, r.text
+    conv_id = r.json()["conversation_id"]
+    assert conv_id
+    return conv_id
+
+
+def test_delete_conversation_removes_it_and_its_messages(client):
+    """Deleting a conversation returns 200, removes its messages, and
+    leaves the chatbot itself untouched."""
+    from app.db import Conversation, Message, SessionLocal
+
+    token, _ = _auth(client, "convdelete@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    ws_id = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+    agent = client.post(f"/api/workspaces/{ws_id}/agents", headers=h,
+                        json={"name": "Chatty Bot"}).json()
+
+    conv_id = _chat_conversation_id(client, h, ws_id, agent["id"])
+
+    r = client.get(f"/api/workspaces/{ws_id}/conversations/{conv_id}", headers=h)
+    assert r.status_code == 200, r.text
+    assert len(r.json()["messages"]) >= 1
+
+    r = client.delete(f"/api/workspaces/{ws_id}/conversations/{conv_id}", headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json()["id"] == conv_id
+
+    r = client.get(f"/api/workspaces/{ws_id}/conversations/{conv_id}", headers=h)
+    assert r.status_code == 404, r.text
+
+    db = SessionLocal()
+    assert db.query(Conversation).filter(Conversation.id == conv_id).count() == 0
+    assert db.query(Message).filter(Message.conversation_id == conv_id).count() == 0
+    db.close()
+
+    # The chatbot itself still exists and still chats.
+    r = client.get(f"/api/workspaces/{ws_id}/agents/{agent['id']}", headers=h)
+    assert r.status_code == 200, r.text
+
+
+def test_delete_conversation_in_other_workspace_returns_404(client):
+    """Deleting under the wrong workspace id is a 404 and deletes nothing."""
+    token, _ = _auth(client, "convcross@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    ws1 = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+    r = client.post("/api/workspaces", headers=h, json={"name": "Second Project"})
+    assert r.status_code == 200, r.text
+    ws2 = r.json()["id"]
+
+    agent = client.post(f"/api/workspaces/{ws1}/agents", headers=h,
+                        json={"name": "Project One Bot"}).json()
+    conv_id = _chat_conversation_id(client, h, ws1, agent["id"])
+
+    r = client.delete(f"/api/workspaces/{ws2}/conversations/{conv_id}", headers=h)
+    assert r.status_code == 404, r.text
+
+    r = client.get(f"/api/workspaces/{ws1}/conversations/{conv_id}", headers=h)
+    assert r.status_code == 200, r.text
+    assert len(r.json()["messages"]) >= 1
+
+
+def test_delete_one_conversation_keeps_the_other(client):
+    """Deleting one conversation of a chatbot keeps its other conversations."""
+    token, _ = _auth(client, "convkeep@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    ws_id = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+    agent = client.post(f"/api/workspaces/{ws_id}/agents", headers=h,
+                        json={"name": "Two Chats Bot"}).json()
+
+    first = _chat_conversation_id(client, h, ws_id, agent["id"], "First chat")
+    second = _chat_conversation_id(client, h, ws_id, agent["id"], "Second chat")
+    assert first != second
+
+    r = client.delete(f"/api/workspaces/{ws_id}/conversations/{first}", headers=h)
+    assert r.status_code == 200, r.text
+
+    r = client.get(f"/api/workspaces/{ws_id}/conversations/{first}", headers=h)
+    assert r.status_code == 404, r.text
+
+    r = client.get(f"/api/workspaces/{ws_id}/conversations/{second}", headers=h)
+    assert r.status_code == 200, r.text
+    assert len(r.json()["messages"]) >= 1
+
+    r = client.get(f"/api/workspaces/{ws_id}/conversations", headers=h)
+    assert r.status_code == 200, r.text
+    assert [c["id"] for c in r.json()] == [second]

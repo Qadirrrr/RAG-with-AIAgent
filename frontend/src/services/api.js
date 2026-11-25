@@ -107,6 +107,7 @@ export const apiService = {
   chatWithAgent: async (ws, agentId, payload) => (await apiClient.post(`/api/workspaces/${ws}/agents/${agentId}/chat`, payload)).data,
   getConversations: async (ws) => normalizeList((await apiClient.get(`/api/workspaces/${ws}/conversations`)).data, ['conversations']),
   getConversation: async (ws, id) => (await apiClient.get(`/api/workspaces/${ws}/conversations/${id}`)).data,
+  deleteConversation: async (ws, id) => (await apiClient.delete(`/api/workspaces/${ws}/conversations/${id}`)).data,
 
   // Analytics
   getAnalytics: async (ws) => (await apiClient.get(`/api/workspaces/${ws}/analytics`)).data,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Bot, Plus, History, Files } from 'lucide-react';
+import { Bot, Plus, History, Files, Trash2 } from 'lucide-react';
 import apiService, { apiError } from '../services/api';
 import { useWorkspace } from '../context/WorkspaceContext';
 import ChatMessage from '../components/ChatMessage';
@@ -62,6 +62,18 @@ export default function Playground() {
     }
   };
 
+  const removeConversation = async (e, conv) => {
+    e.stopPropagation();
+    if (!window.confirm('Delete this conversation? This cannot be undone.')) return;
+    try {
+      await apiService.deleteConversation(selectedId, conv.id);
+      setConversations((prev) => prev.filter((c) => String(c.id) !== String(conv.id)));
+      if (String(conversationId) === String(conv.id)) startNew();
+    } catch (err) {
+      setError(apiError(err, 'Could not delete conversation.'));
+    }
+  };
+
   const send = async (text) => {
     setError(null);
     const userMsg = { role: 'user', content: text, timestamp: new Date().toISOString() };
@@ -112,14 +124,26 @@ export default function Playground() {
           ) : (
             <div className="space-y-1.5 max-h-[420px] overflow-y-auto">
               {conversations.map((c) => (
-                <button
+                <div
                   key={c.id}
-                  onClick={() => openConversation(c)}
-                  className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-colors ${String(conversationId) === String(c.id) ? 'bg-teal-50 text-teal-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}
+                  className={`group flex items-start gap-1 rounded-xl transition-colors ${String(conversationId) === String(c.id) ? 'bg-teal-50' : 'hover:bg-slate-50'}`}
                 >
-                  <span className="block truncate">{c.title || c.first_message || `Conversation ${String(c.id).slice(0, 8)}`}</span>
-                  <span className="block text-[11px] text-slate-400 mt-0.5">{c.message_count ?? c.messages?.length ?? ''} {c.created_at ? new Date(c.created_at).toLocaleDateString() : ''}</span>
-                </button>
+                  <button
+                    onClick={() => openConversation(c)}
+                    className={`flex-1 min-w-0 text-left px-3 py-2.5 text-sm ${String(conversationId) === String(c.id) ? 'text-teal-700 font-semibold' : 'text-slate-600'}`}
+                  >
+                    <span className="block truncate">{c.title || c.first_message || `Conversation ${String(c.id).slice(0, 8)}`}</span>
+                    <span className="block text-[11px] text-slate-400 mt-0.5">{c.message_count ?? c.messages?.length ?? ''} {c.created_at ? new Date(c.created_at).toLocaleDateString() : ''}</span>
+                  </button>
+                  <button
+                    onClick={(e) => removeConversation(e, c)}
+                    title="Delete conversation"
+                    aria-label="Delete conversation"
+                    className="shrink-0 mt-2 mr-2 p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 opacity-60 lg:opacity-0 lg:group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               ))}
             </div>
           )}

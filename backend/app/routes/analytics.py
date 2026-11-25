@@ -92,6 +92,21 @@ def get_conversation(workspace_id: str, conversation_id: str, user=Depends(get_c
                            channel=conv.channel, created_at=conv.created_at, messages=out_msgs)
 
 
+@router.delete("/{workspace_id}/conversations/{conversation_id}")
+def delete_conversation(workspace_id: str, conversation_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    ws = get_workspace_or_404(workspace_id, user, db)
+    conv = db.query(Conversation).filter(Conversation.id == conversation_id, Conversation.workspace_id == ws.id).first()
+    if not conv:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found.")
+    # The Conversation.messages relationship carries a delete-orphan cascade,
+    # so removing the conversation removes its messages in the same
+    # transaction. The chatbot, its documents and other conversations are
+    # not touched.
+    db.delete(conv)
+    db.commit()
+    return {"message": "Conversation deleted successfully", "id": conversation_id}
+
+
 @router.get("/{workspace_id}/stats")
 def get_workspace_stats(workspace_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)):
     """Dashboard numbers scoped to one workspace only. A fresh workspace returns zeros."""
