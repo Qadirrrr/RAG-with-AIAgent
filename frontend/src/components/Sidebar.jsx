@@ -85,7 +85,7 @@ export default function Sidebar({ isOpen, onClose }) {
           </nav>
         </div>
 
-        <div className="p-4 border-t border-white/25 space-y-3">
+        <div className="p-4 border-t border-white/25">
           <div className="flex items-center gap-3 px-1">
             <div className="w-9 h-9 rounded-full bg-white text-[#0F2A3D] flex items-center justify-center font-bold text-sm shrink-0">
               {(user?.name || user?.email || 'U').charAt(0).toUpperCase()}
@@ -97,15 +97,6 @@ export default function Sidebar({ isOpen, onClose }) {
             <button onClick={handleLogout} title="Log out" className="p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/10">
               <LogOut className="w-4 h-4" />
             </button>
-          </div>
-          <div className="bg-white/10 rounded-xl p-3 border border-white/25">
-            <div className="flex items-center space-x-2 text-xs font-semibold text-white mb-1">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Separate knowledge base per workspace</span>
-            </div>
-            <p className="text-[11px] text-white/60 leading-relaxed">
-              Each workspace has its own agents, documents and vector store. Data never crosses workspaces.
-            </p>
           </div>
         </div>
       </aside>
