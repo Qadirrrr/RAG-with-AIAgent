@@ -56,6 +56,17 @@ python -m venv ../.venv
 ../.venv/bin/python run.py
 ```
 
+Optional but recommended on the server: install the headless browser
+used to read JavaScript-built websites (React/Vue single-page apps)
+when adding knowledge from a URL. Static websites work without it.
+Run once, as the same user that runs the backend service (root in the
+systemd deployment):
+
+```bash
+../.venv/bin/pip install playwright
+../.venv/bin/playwright install --with-deps chromium
+```
+
 Backend runs at http://localhost:8000, API docs at
 http://localhost:8000/docs. Check health:
 
@@ -120,6 +131,9 @@ Ollama running with the models pulled (see Requirements above).
   `ollama pull qwen2.5:7b` (check `ollama list` for what is installed).
 - Document upload fails with an embeddings error: pull the embedding
   model with `ollama pull bge-m3` and make sure Ollama is running.
+- Adding a website URL says no readable text was found: the page is
+  probably built with JavaScript. Install the headless browser (see
+  section 2) so the backend can render such pages, then try again.
 - `Please provide a valid email address` on signup: use a real
   deliverable email address (`.local` addresses are rejected).
 - `429` on chat: the workspace hit its monthly message limit for its

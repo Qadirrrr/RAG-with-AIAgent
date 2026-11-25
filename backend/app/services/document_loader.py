@@ -1,7 +1,6 @@
 import csv
 import os
 from typing import List, Tuple
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 import pypdf
 import docx2txt
@@ -9,12 +8,52 @@ import docx2txt
 from app.config import settings
 
 class DocumentLoaderService:
-    def __init__(self, chunk_size: int = 500, chunk_overlap: int = 100):
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-            separators=["\n\n", "\n", " ", ""]
-        )
+    def __init__(self, chunk_words: int = 20, chunk_overlap_words: int = 5):
+        # Word-based chunking: each chunk holds at most chunk_words
+        # words, and consecutive chunks share chunk_overlap_words words.
+        try:
+            chunk_words = int(chunk_words)
+        except (TypeError, ValueError):
+            chunk_words = 20
+        if chunk_words < 1:
+            chunk_words = 20
+        try:
+            chunk_overlap_words = int(chunk_overlap_words)
+        except (TypeError, ValueError):
+            chunk_overlap_words = 5
+        if not 0 <= chunk_overlap_words < chunk_words:
+            # Misconfigured overlap must never crash ingestion; fall
+            # back to the default 5-word overlap (or just below the
+            # chunk size for very small chunks).
+            chunk_overlap_words = 5 if chunk_words > 5 else max(0, chunk_words - 1)
+        self.chunk_words = chunk_words
+        self.chunk_overlap_words = chunk_overlap_words
+
+    def _split_documents(self, docs: List[Document]) -> List[Document]:
+        """Split source documents into word-based chunks.
+
+        Each source document is split independently (so a PDF page or a
+        CSV row never bleeds into the next one): its text is cut into
+        windows of at most chunk_words words, stepping by
+        chunk_words - chunk_overlap_words so consecutive chunks share
+        the configured overlap. The last chunk of a document may be
+        shorter. Source metadata is preserved on every chunk.
+        """
+        step = self.chunk_words - self.chunk_overlap_words
+        chunks = []
+        for doc in docs:
+            words = doc.page_content.split()
+            if not words:
+                continue
+            for start in range(0, len(words), step):
+                window = words[start:start + self.chunk_words]
+                if not window:
+                    break
+                chunks.append(Document(
+                    page_content=" ".join(window),
+                    metadata=dict(doc.metadata),
+                ))
+        return chunks
 
     def split_text(self, text: str, document_id: str, original_filename: str, extra_metadata: dict = None) -> List[Document]:
         """Split raw text (for example from a website URL) into chunks."""
@@ -29,7 +68,7 @@ class DocumentLoaderService:
                 },
             )
         ]
-        chunks = self.text_splitter.split_documents(docs)
+        chunks = self._split_documents(docs)
         for i, chunk in enumerate(chunks):
             chunk.metadata["chunk_index"] = i
             chunk.metadata["document_id"] = document_id
@@ -52,7 +91,7 @@ class DocumentLoaderService:
             raise ValueError(f"Unsupported file format: {ext}")
 
         # Split into chunks while preserving metadata
-        chunks = self.text_splitter.split_documents(docs)
+        chunks = self._split_documents(docs)
         for i, chunk in enumerate(chunks):
             chunk.metadata["chunk_index"] = i
             chunk.metadata["document_id"] = document_id
@@ -157,10 +196,10 @@ class DocumentLoaderService:
         ]
 
 # The shared ingestion service uses the configured chunking so an
-# operator can tune chunk size and overlap via CHUNK_SIZE and
-# CHUNK_OVERLAP in the backend .env without touching code.
+# operator can tune the chunk word count and overlap via CHUNK_WORDS
+# and CHUNK_WORD_OVERLAP in the backend .env without touching code.
 document_loader_service = DocumentLoaderService(
-    chunk_size=settings.CHUNK_SIZE,
-    chunk_overlap=settings.CHUNK_OVERLAP,
+    chunk_words=settings.CHUNK_WORDS,
+    chunk_overlap_words=settings.CHUNK_WORD_OVERLAP,
 )
 

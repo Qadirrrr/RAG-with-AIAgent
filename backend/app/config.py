@@ -21,13 +21,15 @@ class Settings(BaseSettings):
     # Agent mode (LangGraph): maximum tool-calling steps per answer
     AGENT_MAX_STEPS: int = 5
 
-    # Document chunking at ingestion time. Smaller chunks keep each
-    # retrieved section focused, so answers can be built from more,
-    # more precise pieces of the knowledge. Changing these only affects
-    # documents uploaded afterwards; existing documents keep the chunks
-    # they were ingested with until they are re-uploaded.
-    CHUNK_SIZE: int = 500
-    CHUNK_OVERLAP: int = 100
+    # Document chunking at ingestion time. Chunks are word-based: each
+    # chunk holds at most CHUNK_WORDS words, and consecutive chunks
+    # share CHUNK_WORD_OVERLAP words so context is not lost at the
+    # boundaries. Small, focused chunks keep each retrieved section
+    # precise. Changing these only affects documents uploaded
+    # afterwards; existing documents keep the chunks they were ingested
+    # with until they are re-uploaded.
+    CHUNK_WORDS: int = 20
+    CHUNK_WORD_OVERLAP: int = 5
 
     # How many knowledge sections are retrieved per question and given
     # to the model. A deeper retrieval lets the model combine facts

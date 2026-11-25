@@ -115,8 +115,41 @@ async def upload_document(workspace_id: str, agent_id: str, file: UploadFile = F
     return _doc_out(doc)
 
 
+def _fetch_text_rendered(url: str) -> str:
+    """Fetch a page with a headless browser and return its rendered text.
+
+    Used as a fallback for JavaScript-built pages (React/Vue SPAs) whose
+    plain HTML is an empty shell. Playwright is imported lazily and any
+    failure (not installed, browser missing, timeout, navigation error)
+    returns "" so the caller can fall back to its normal error handling.
+    """
+    try:
+        from playwright.sync_api import sync_playwright
+    except Exception:
+        return ""
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            try:
+                page = browser.new_page()
+                page.goto(url, wait_until="domcontentloaded", timeout=20_000)
+                page.wait_for_timeout(3_000)
+                text = page.inner_text("body")
+            finally:
+                browser.close()
+    except Exception:
+        return ""
+    text = " ".join((text or "").split())
+    return text[:MAX_URL_CHARS]
+
+
 def _fetch_text(url: str) -> str:
-    """Fetch a web page and return its readable text, capped per page."""
+    """Fetch a web page and return its readable text, capped per page.
+
+    Plain HTTP fetch first (fast, works for normal sites). If that yields
+    almost no text, the page is likely JavaScript-rendered, so fall back
+    to a headless browser render and use whichever text is longer.
+    """
     resp = httpx.get(url, timeout=20, follow_redirects=True,
                      headers={"User-Agent": "RAG-AI-Agent/1.0"})
     resp.raise_for_status()
@@ -124,6 +157,10 @@ def _fetch_text(url: str) -> str:
     for tag in soup(["script", "style", "nav", "header", "footer", "noscript"]):
         tag.decompose()
     text = " ".join(soup.get_text(separator=" ").split())
+    if len(text) < 50:
+        rendered = _fetch_text_rendered(url)
+        if len(rendered) > len(text):
+            text = rendered
     return text[:MAX_URL_CHARS]
 
 
@@ -180,7 +217,7 @@ def ingest_url(workspace_id: str, agent_id: str, payload: UrlIngestRequest,
             ingested += 1
         if first_doc is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                                detail="None of the sitemap pages had readable text.")
+                                detail="None of the sitemap pages had readable text. The pages may be empty or fully built with JavaScript that could not be rendered.")
         return _doc_out(first_doc)
 
     try:
@@ -188,7 +225,8 @@ def ingest_url(workspace_id: str, agent_id: str, payload: UrlIngestRequest,
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Could not fetch URL: {e}")
     if len(text) < 50:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No readable text found on that page.")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="No readable text found on that page. The page may be empty or fully built with JavaScript that could not be rendered.")
     doc = _ingest_page(agent, workspace_id, url, text, db)
     return _doc_out(doc)
 

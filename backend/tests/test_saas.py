@@ -750,9 +750,10 @@ def test_ollama_models_endpoint_when_ollama_unreachable(client, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Chunking and retrieval depth: documents are split into smaller chunks
-# (500/100) and each question retrieves RETRIEVAL_K sections, so answers
-# are built from more of the document instead of a few large chunks.
+# Chunking and retrieval depth: documents are split into word-based
+# chunks of at most 20 words (5-word overlap) and each question
+# retrieves RETRIEVAL_K sections, so answers are built from more of
+# the document instead of a few large chunks.
 # ---------------------------------------------------------------------------
 
 def _sample_text():
@@ -764,28 +765,48 @@ def _sample_text():
     return "\n".join(lines)
 
 
-def test_document_loader_uses_fine_chunks():
+def test_document_loader_uses_20_word_chunks():
     from app.config import settings
     from app.services.document_loader import DocumentLoaderService
 
-    assert settings.CHUNK_SIZE == 500
-    assert settings.CHUNK_OVERLAP == 100
+    assert settings.CHUNK_WORDS == 20
+    assert settings.CHUNK_WORD_OVERLAP == 5
 
-    text = _sample_text()
-    assert len(text) > 2000
+    # A text of exactly 100 words, each word unique so positions can be
+    # verified. Sliding windows of 20 words stepping by 20 - 5 = 15
+    # give ceil((100 - 20) / 15) + 1 = 7 chunks.
+    words = [f"word{i}" for i in range(100)]
+    text = " ".join(words)
 
     chunks = DocumentLoaderService().split_text(text, "doc-test", "guide.txt")
-    assert len(chunks) >= 5
-    # The end of the document is covered by the chunks (in the last one).
-    assert "Section 20" in chunks[-1].page_content
-    joined = "\n".join(c.page_content for c in chunks)
-    assert "Section 1:" in joined and "Section 20" in joined
+    assert len(chunks) == 7
 
-    # The old coarse settings (1000/150) produced far fewer chunks for
-    # the same text; the new defaults are strictly finer.
-    old_chunks = DocumentLoaderService(
-        chunk_size=1000, chunk_overlap=150).split_text(text, "doc-test", "guide.txt")
-    assert len(chunks) > len(old_chunks)
+    # No chunk holds more than 20 words; only the last may be shorter.
+    for chunk in chunks[:-1]:
+        assert len(chunk.page_content.split()) == 20
+    assert len(chunks[-1].page_content.split()) <= 20
+
+    # The last chunk contains the final words of the text.
+    assert chunks[-1].page_content.split()[-1] == "word99"
+    assert "word99" in chunks[-1].page_content
+
+    # Consecutive chunks share exactly the 5-word overlap: the last 5
+    # words of one chunk are the first 5 words of the next.
+    for prev, nxt in zip(chunks, chunks[1:]):
+        assert prev.page_content.split()[-5:] == nxt.page_content.split()[:5]
+
+    # Chunk indexes are sequential across the document.
+    assert [c.metadata["chunk_index"] for c in chunks] == list(range(7))
+
+    # The longer sample document also splits under the same word rule.
+    sample_chunks = DocumentLoaderService().split_text(
+        _sample_text(), "doc-test", "guide.txt")
+    assert sample_chunks
+    assert all(len(c.page_content.split()) <= 20 for c in sample_chunks)
+    # The end of the document is covered: the last chunk holds the
+    # document's final words, and Section 20 appears in the chunks.
+    assert sample_chunks[-1].page_content.split()[-1] == "account."
+    assert "Section 20" in "\n".join(c.page_content for c in sample_chunks)
 
 
 def test_answer_question_uses_retrieval_k(monkeypatch):
@@ -826,3 +847,85 @@ def test_answer_question_uses_retrieval_k(monkeypatch):
     assert calls["agent_id"] == "agent-deep"
     assert calls["k"] == settings.RETRIEVAL_K
     assert out.response == "The Business plan costs 1499 rupees per month."
+
+
+# --- Website URL ingestion: JavaScript-rendered page fallback ---
+
+class _FakeHttpResponse:
+    def __init__(self, text):
+        self.text = text
+
+    def raise_for_status(self):
+        return None
+
+
+_SPA_SHELL = ("<html><head><title>App</title>"
+              "<script src=\"/assets/index-abc.js\"></script></head>"
+              "<body><div id=\"root\"></div></body></html>")
+
+_RENDERED_TEXT = ("CyberITA is an IT learning platform with hands on Linux labs, "
+                  "guided courses, real server practice and certificates for students.")
+
+
+def _make_agent(client, email):
+    token, _ = _auth(client, email)
+    h = {"Authorization": f"Bearer {token}"}
+    ws_id = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+    agent = client.post(f"/api/workspaces/{ws_id}/agents", headers=h,
+                        json={"name": "Web Bot"}).json()
+    return h, ws_id, agent
+
+
+def test_url_ingest_spa_uses_rendered_fallback(client, monkeypatch):
+    from app.routes import knowledge
+    h, ws_id, agent = _make_agent(client, "spa@example.com")
+    monkeypatch.setattr(knowledge.httpx, "get",
+                        lambda *a, **k: _FakeHttpResponse(_SPA_SHELL))
+    calls = {"n": 0}
+
+    def fake_rendered(url):
+        calls["n"] += 1
+        return _RENDERED_TEXT
+
+    monkeypatch.setattr(knowledge, "_fetch_text_rendered", fake_rendered)
+    r = client.post(f"/api/workspaces/{ws_id}/agents/{agent['id']}/documents/url",
+                    headers=h, json={"url": "https://spa.example.com/"})
+    assert r.status_code == 200, r.text
+    assert calls["n"] == 1
+    assert r.json()["status"] == "processed"
+    assert r.json()["chunks_count"] >= 1
+    assert r.json()["source_type"] == "url"
+
+
+def test_url_ingest_static_page_skips_rendered_fallback(client, monkeypatch):
+    from app.routes import knowledge
+    h, ws_id, agent = _make_agent(client, "static@example.com")
+    html = ("<html><body><p>CloudNest offers reliable VPS hosting with fast SSD "
+            "storage, instant setup and friendly support for every customer.</p></body></html>")
+    monkeypatch.setattr(knowledge.httpx, "get",
+                        lambda *a, **k: _FakeHttpResponse(html))
+    calls = {"n": 0}
+
+    def fake_rendered(url):
+        calls["n"] += 1
+        return _RENDERED_TEXT
+
+    monkeypatch.setattr(knowledge, "_fetch_text_rendered", fake_rendered)
+    r = client.post(f"/api/workspaces/{ws_id}/agents/{agent['id']}/documents/url",
+                    headers=h, json={"url": "https://static.example.com/"})
+    assert r.status_code == 200, r.text
+    assert calls["n"] == 0
+    assert r.json()["status"] == "processed"
+
+
+def test_url_ingest_both_paths_empty_returns_400(client, monkeypatch):
+    from app.routes import knowledge
+    h, ws_id, agent = _make_agent(client, "empty@example.com")
+    monkeypatch.setattr(knowledge.httpx, "get",
+                        lambda *a, **k: _FakeHttpResponse(_SPA_SHELL))
+    monkeypatch.setattr(knowledge, "_fetch_text_rendered", lambda url: "")
+    r = client.post(f"/api/workspaces/{ws_id}/agents/{agent['id']}/documents/url",
+                    headers=h, json={"url": "https://empty.example.com/"})
+    assert r.status_code == 400, r.text
+    assert "No readable text found on that page." in r.json()["detail"]
+    assert "could not be rendered" in r.json()["detail"]
