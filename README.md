@@ -36,7 +36,7 @@ on their website with a chat widget or a REST API. No programming needed.
 ## Quick start
 
 See [SETUP.md](SETUP.md) for local setup and [DEPLOYMENT.md](DEPLOYMENT.md)
-for production deployment (Docker Compose + Postgres).
+for production deployment (manual Ubuntu VPS + Postgres, no Docker).
 
 ```bash
 # Backend

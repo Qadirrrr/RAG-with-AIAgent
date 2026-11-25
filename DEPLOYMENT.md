@@ -1,32 +1,6 @@
 # Deployment
 
-## Option A: Docker Compose (recommended)
-
-```bash
-cp backend/.env.example backend/.env   # fill in real keys + JWT_SECRET
-# Edit docker-compose.yml if you want different ports/passwords
-docker compose up --build -d
-```
-
-Services:
-
-- `db` — PostgreSQL 16, database `rag_saas`, data in the `pgdata` volume.
-  `DATABASE_URL` is set for the backend automatically.
-- `backend` — FastAPI on http://localhost:8000 (docs at `/docs`).
-- `frontend` — Nginx serving the production build on
-  http://localhost:3000, proxying `/api` to the backend.
-
-Check status:
-
-```bash
-docker compose ps
-docker compose logs -f backend
-curl http://localhost:8000/api/health
-```
-
-Stop: `docker compose down` (add `-v` to also delete the Postgres data).
-
-## Option B: Manual server (Ubuntu VPS)
+Manual server deployment (Ubuntu VPS). No Docker is used in this project.
 
 1. Install Python 3.12, Node 20, PostgreSQL 16 and Nginx.
 2. Create the database and user:
@@ -65,6 +39,13 @@ WantedBy=multi-user.target
    Set `VITE_API_BASE_URL` to your backend URL before building.
 6. Put Nginx in front with HTTPS (Certbot) and set
    `CORS_ORIGINS` to the exact frontend origin.
+
+Check health after deployment:
+
+```bash
+curl http://localhost:8000/api/health
+curl http://localhost:8000/api/plans
+```
 
 ## Production checklist
 
