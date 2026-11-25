@@ -44,15 +44,15 @@ export default function Settings() {
           disabled={loading}
           className="inline-flex items-center space-x-2 bg-white hover:bg-slate-50 text-slate-700 font-medium px-4 py-2 rounded-xl text-sm border border-slate-200 transition-colors shadow-xs"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-600' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-teal-600' : ''}`} />
           <span>Check Status</span>
         </button>
       </div>
 
       {/* Backend & Environment Card */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-6">
+      <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-6">
         <h3 className="text-base font-semibold text-slate-800 flex items-center space-x-2.5">
-          <Globe className="w-5 h-5 text-indigo-600" />
+          <Globe className="w-5 h-5 text-teal-600" />
           <span>Backend Connection</span>
         </h3>
 
@@ -75,9 +75,9 @@ export default function Settings() {
       </div>
 
       {/* AI Model Configuration Card */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-6">
+      <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-6">
         <h3 className="text-base font-semibold text-slate-800 flex items-center space-x-2.5">
-          <Cpu className="w-5 h-5 text-indigo-600" />
+          <Cpu className="w-5 h-5 text-teal-600" />
           <span>AI Model Configuration</span>
         </h3>
 
@@ -87,7 +87,7 @@ export default function Settings() {
               <p className="text-sm font-medium text-slate-800">Active AI Provider</p>
               <p className="text-xs text-slate-500 mt-0.5">Powers LLM reasoning and semantic vector embeddings</p>
             </div>
-            <span className="font-mono text-xs font-bold uppercase text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-3 py-1.5 rounded-xl">
+            <span className="font-mono text-xs font-bold uppercase text-teal-700 bg-teal-50 border border-teal-200/60 px-3 py-1.5 rounded-xl">
               {health?.provider === 'gemini' ? 'Google Gemini' : health?.provider === 'openai' ? 'OpenAI' : 'Not Configured'}
             </span>
           </div>
@@ -97,7 +97,7 @@ export default function Settings() {
               <p className="text-sm font-medium text-slate-800">Language Model (LLM)</p>
               <p className="text-xs text-slate-500 mt-0.5">Powers the LangChain AI Agent reasoner</p>
             </div>
-            <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-3 py-1.5 rounded-xl">
+            <span className="font-mono text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200/60 px-3 py-1.5 rounded-xl">
               {health?.model || 'gemini-1.5-flash'}
             </span>
           </div>
@@ -135,9 +135,9 @@ export default function Settings() {
       </div>
 
       {/* Vector Store Configuration */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-6">
+      <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-6">
         <h3 className="text-base font-semibold text-slate-800 flex items-center space-x-2.5">
-          <Database className="w-5 h-5 text-indigo-600" />
+          <Database className="w-5 h-5 text-teal-600" />
           <span>Vector Database</span>
         </h3>
 

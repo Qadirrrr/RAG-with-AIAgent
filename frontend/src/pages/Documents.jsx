@@ -72,13 +72,13 @@ export default function Documents() {
           disabled={loading}
           className="inline-flex items-center space-x-2 bg-white hover:bg-slate-50 text-slate-700 font-medium px-4 py-2 rounded-xl text-sm border border-slate-200 transition-colors shadow-xs disabled:opacity-50 self-start sm:self-auto"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-600' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-teal-600' : ''}`} />
           <span>Refresh</span>
         </button>
       </div>
 
       {/* File Upload Zone */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs">
+      <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200/90 shadow-xs">
         <FileUpload onUploadSuccess={handleUploadSuccess} />
       </div>
 
@@ -94,7 +94,7 @@ export default function Documents() {
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <h3 className="text-base font-semibold text-slate-800 flex items-center space-x-2">
-            <Files className="w-5 h-5 text-indigo-600" />
+            <Files className="w-5 h-5 text-teal-600" />
             <span>Uploaded Files ({documents.length})</span>
           </h3>
 
@@ -107,7 +107,7 @@ export default function Documents() {
                 placeholder="Search documents..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600/20/20 focus:border-teal-500"
               />
             </div>
           )}

@@ -33,7 +33,7 @@ export default function ChatInput({ onSendMessage, isLoading, onClearChat, disab
   return (
     <div className="bg-white border-t border-slate-200 px-4 py-4 sm:px-8">
       <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
-        <div className="relative flex items-center bg-slate-50 border border-slate-200 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all">
+        <div className="relative flex items-center bg-slate-50 border border-slate-200 rounded-2xl p-2 focus-within:ring-2 focus-within:ring-teal-600/20 focus-within:border-teal-500 transition-all">
           <textarea
             ref={textareaRef}
             rows={1}
@@ -64,13 +64,13 @@ export default function ChatInput({ onSendMessage, isLoading, onClearChat, disab
               className={`
                 p-2 rounded-xl flex items-center justify-center transition-all duration-150
                 ${input.trim() && !isLoading && !disabled
-                  ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm shadow-indigo-200 cursor-pointer'
+                  ? 'bg-teal-700 text-white hover:bg-teal-800 shadow-sm shadow-teal-200 cursor-pointer'
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                 }
               `}
             >
               {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
               ) : (
                 <Send className="w-4 h-4" />
               )}
@@ -80,7 +80,7 @@ export default function ChatInput({ onSendMessage, isLoading, onClearChat, disab
 
         <div className="flex items-center justify-between mt-2 px-2 text-[11px] text-slate-400">
           <div className="flex items-center space-x-1">
-            <Sparkles className="w-3 h-3 text-indigo-500" />
+            <Sparkles className="w-3 h-3 text-teal-500" />
             <span>Agent answers with LangChain context retrieval and page sources</span>
           </div>
           <span>Shift + Enter for new line</span>

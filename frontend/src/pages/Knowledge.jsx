@@ -111,13 +111,13 @@ export default function Knowledge() {
           <ul className="divide-y divide-slate-100">
             {docs.map((doc) => (
               <li key={doc.id} className="px-6 py-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0"><FileText className="w-5 h-5" /></div>
+                <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center shrink-0"><FileText className="w-5 h-5" /></div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-slate-800 truncate">{doc.filename || doc.name || doc.title || doc.url || 'Document'}</p>
                   <p className="text-xs text-slate-500">
                     {doc.status ? `${doc.status} ` : ''}{doc.chunks_count ?? doc.chunk_count ? ` / ${doc.chunks_count ?? doc.chunk_count} chunks` : ''}{doc.created_at ? ` / ${new Date(doc.created_at).toLocaleDateString()}` : ''}
                   </p>
-                  {doc.url && <p className="text-xs text-indigo-600 truncate">{doc.url}</p>}
+                  {doc.url && <p className="text-xs text-teal-600 truncate">{doc.url}</p>}
                 </div>
                 <span className={`hidden sm:inline text-xs font-semibold px-2.5 py-1 rounded-full ${doc.status === 'processed' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                   {doc.status || 'ready'}

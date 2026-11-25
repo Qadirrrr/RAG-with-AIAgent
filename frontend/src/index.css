@@ -1,10 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  html {
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
   body {
-    @apply bg-slate-50 text-slate-800 antialiased font-sans selection:bg-indigo-100 selection:text-indigo-700;
+    @apply bg-[#F7F9FB] text-slate-900 antialiased font-sans selection:bg-teal-100 selection:text-teal-800;
+  }
+  h1, h2, h3, h4 {
+    @apply font-bold tracking-tight text-slate-900;
   }
 }
 
@@ -26,4 +33,3 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
-

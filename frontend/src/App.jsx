@@ -37,14 +37,14 @@ const routeTitles = {
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
-  if (loading) return <div className="min-h-screen bg-slate-50"><Spinner label="Checking your session..." /></div>;
+  if (loading) return <div className="min-h-screen bg-[#F7F9FB]"><Spinner label="Checking your session..." /></div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return children;
 }
 
 function PublicOnly({ children }) {
   const { isAuthenticated, loading } = useAuth();
-  if (loading) return <div className="min-h-screen bg-slate-50"><Spinner label="Checking your session..." /></div>;
+  if (loading) return <div className="min-h-screen bg-[#F7F9FB]"><Spinner label="Checking your session..." /></div>;
   if (isAuthenticated) return <Navigate to="/" replace />;
   return children;
 }
@@ -69,7 +69,7 @@ function Shell() {
   const title = routeTitles[location.pathname] || (location.pathname.startsWith('/agents/') && location.pathname.includes('/playground') ? 'Agent Playground' : location.pathname.includes('/knowledge') ? 'Knowledge Base' : 'RAG AI Agent');
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-[#F7F9FB] flex">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex-1 flex flex-col md:pl-64 min-w-0">
         <Navbar title={title} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} isOnline={isOnline} />

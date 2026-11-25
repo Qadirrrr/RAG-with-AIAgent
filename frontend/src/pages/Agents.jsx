@@ -116,7 +116,7 @@ export default function Agents() {
           {agents.map((agent) => (
             <div key={agent.id} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col">
               <div className="flex items-start justify-between gap-2">
-                <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center"><Bot className="w-5 h-5" /></div>
+                <div className="w-11 h-11 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center"><Bot className="w-5 h-5" /></div>
                 <div className="flex gap-1">
                   <button onClick={() => openEdit(agent)} title="Edit agent" className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"><Pencil className="w-4 h-4" /></button>
                   <button onClick={() => remove(agent)} title="Delete agent" className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"><Trash2 className="w-4 h-4" /></button>
@@ -125,7 +125,7 @@ export default function Agents() {
               <h3 className="font-semibold text-slate-900 mt-4">{agent.name}</h3>
               <p className="text-xs text-slate-500 mt-1 line-clamp-2 min-h-[2rem]">{agent.instructions || 'No instructions set.'}</p>
               <div className="flex flex-wrap gap-2 mt-4">
-                <span className="text-[11px] font-semibold bg-indigo-50 text-indigo-700 px-2 py-1 rounded-full">{agent.provider || 'gemini'} / {agent.model || 'default'}</span>
+                <span className="text-[11px] font-semibold bg-teal-50 text-teal-700 px-2 py-1 rounded-full">{agent.provider || 'gemini'} / {agent.model || 'default'}</span>
                 <span className="text-[11px] font-semibold bg-slate-100 text-slate-600 px-2 py-1 rounded-full">{agent.language || 'en'}</span>
               </div>
               <div className="flex items-center gap-4 mt-4 text-xs text-slate-500">
@@ -174,7 +174,7 @@ export default function Agents() {
               </div>
               <div>
                 <label className={labelCls}>Temperature: {form.temperature}</label>
-                <input type="range" min="0" max="1" step="0.1" className="w-full accent-indigo-600" value={form.temperature} onChange={(e) => setForm({ ...form, temperature: parseFloat(e.target.value) })} />
+                <input type="range" min="0" max="1" step="0.1" className="w-full accent-teal-700" value={form.temperature} onChange={(e) => setForm({ ...form, temperature: parseFloat(e.target.value) })} />
               </div>
             </div>
             <div>

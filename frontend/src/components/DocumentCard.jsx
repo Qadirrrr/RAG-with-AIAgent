@@ -91,7 +91,7 @@ export default function DocumentCard({ document, onDelete, isDeleting }) {
         </div>
 
         <div className="flex items-center space-x-1.5" title="Chunks indexed in Chroma">
-          <Layers className="w-3.5 h-3.5 text-indigo-500" />
+          <Layers className="w-3.5 h-3.5 text-teal-500" />
           <span className="font-medium text-slate-700">{document.chunks_count || 0} chunks</span>
         </div>
 

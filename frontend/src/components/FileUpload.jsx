@@ -87,8 +87,8 @@ export default function FileUpload({ onUploadSuccess }) {
         className={`
           border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center cursor-pointer transition-all duration-200
           ${isDragging 
-            ? 'border-indigo-500 bg-indigo-50/60 scale-[0.99]' 
-            : 'border-slate-300 hover:border-indigo-400 bg-white hover:bg-slate-50/50'
+            ? 'border-teal-500 bg-teal-50/60 scale-[0.99]' 
+            : 'border-slate-300 hover:border-teal-400 bg-white hover:bg-slate-50/50'
           }
           ${uploading ? 'opacity-80 pointer-events-none' : ''}
         `}
@@ -102,7 +102,7 @@ export default function FileUpload({ onUploadSuccess }) {
         />
 
         <div className="flex flex-col items-center justify-center space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-xs">
+          <div className="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center shadow-xs">
             {uploading ? (
               <Loader2 className="w-7 h-7 animate-spin" />
             ) : (
@@ -127,7 +127,7 @@ export default function FileUpload({ onUploadSuccess }) {
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                 <div 
-                  className="bg-indigo-600 h-2 rounded-full transition-all duration-300 ease-out"
+                  className="bg-teal-700 h-2 rounded-full transition-all duration-300 ease-out"
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>

@@ -32,7 +32,7 @@ export default function WorkspaceSwitcher() {
         onClick={() => setOpen(!open)}
         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-left"
       >
-        <span className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
+        <span className="w-8 h-8 rounded-lg bg-teal-700 text-white flex items-center justify-center shrink-0">
           <Building2 className="w-4 h-4" />
         </span>
         <span className="flex-1 min-w-0">
@@ -53,12 +53,12 @@ export default function WorkspaceSwitcher() {
               className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50"
             >
               <span className="flex-1 truncate text-slate-700">{w.name}</span>
-              {String(selected?.id) === String(w.id) && <Check className="w-4 h-4 text-indigo-600" />}
+              {String(selected?.id) === String(w.id) && <Check className="w-4 h-4 text-teal-600" />}
             </button>
           ))}
           <button
             onClick={() => { setShowCreate(true); setOpen(false); }}
-            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 border-t border-slate-100"
+            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-teal-600 hover:bg-teal-50 border-t border-slate-100"
           >
             <Plus className="w-4 h-4" /> New workspace
           </button>

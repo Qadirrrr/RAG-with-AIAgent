@@ -12,17 +12,17 @@
   var messages = [{ role: 'assistant', content: 'Hello! How can I help you today?' }];
 
   var css = [
-    '#rag-widget-btn{position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:#4f46e5;color:#fff;border:none;cursor:pointer;font-size:24px;z-index:9999;box-shadow:0 8px 24px rgba(79,70,229,.4)}',
-    '#rag-widget-panel{position:fixed;bottom:88px;right:20px;width:340px;max-width:calc(100vw - 40px);height:460px;max-height:calc(100vh - 120px);background:#fff;border:1px solid #e2e8f0;border-radius:16px;display:none;flex-direction:column;overflow:hidden;z-index:9999;box-shadow:0 16px 40px rgba(15,23,42,.2);font-family:system-ui,sans-serif}',
+    '#rag-widget-btn{position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:#0F766E;color:#fff;border:none;cursor:pointer;font-size:24px;z-index:9999;box-shadow:0 8px 24px rgba(15,118,110,.4)}',
+    '#rag-widget-panel{position:fixed;bottom:88px;right:20px;width:340px;max-width:calc(100vw - 40px);height:460px;max-height:calc(100vh - 120px);background:#fff;border:1px solid #e2e8f0;border-radius:16px;display:none;flex-direction:column;overflow:hidden;z-index:9999;box-shadow:0 16px 40px rgba(15,23,42,.2);font-family:Inter,system-ui,sans-serif}',
     '#rag-widget-panel.open{display:flex}',
-    '#rag-widget-head{background:#4f46e5;color:#fff;padding:14px 16px;font-weight:600;font-size:14px}',
+    '#rag-widget-head{background:#0F766E;color:#fff;padding:14px 16px;font-weight:600;font-size:14px}',
     '#rag-widget-body{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px}',
     '.rag-msg{max-width:85%;padding:9px 12px;border-radius:12px;font-size:14px;line-height:1.45;white-space:pre-wrap;word-break:break-word}',
-    '.rag-msg.user{align-self:flex-end;background:#4f46e5;color:#fff}',
+    '.rag-msg.user{align-self:flex-end;background:#0F766E;color:#fff}',
     '.rag-msg.assistant{align-self:flex-start;background:#f1f5f9;color:#1e293b}',
     '#rag-widget-form{display:flex;gap:8px;padding:10px;border-top:1px solid #e2e8f0}',
     '#rag-widget-input{flex:1;border:1px solid #cbd5e1;border-radius:10px;padding:9px 12px;font-size:14px;outline:none}',
-    '#rag-widget-send{background:#4f46e5;color:#fff;border:none;border-radius:10px;padding:0 16px;cursor:pointer;font-weight:600}'
+    '#rag-widget-send{background:#0F766E;color:#fff;border:none;border-radius:10px;padding:0 16px;cursor:pointer;font-weight:600}'
   ].join('\n');
   var style = document.createElement('style');
   style.textContent = css;

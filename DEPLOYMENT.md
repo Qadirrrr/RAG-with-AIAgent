@@ -2,6 +2,25 @@
 
 Manual server deployment (Ubuntu VPS). No Docker is used in this project.
 
+## Server requirements
+
+| Requirement | Minimum | Recommended |
+| --- | --- | --- |
+| Server | Ubuntu 22.04 / 24.04 VPS | Linode g6-standard-1 or similar |
+| CPU / RAM / Disk | 2 vCPU, 2 GB RAM, 20 GB disk | 2 vCPU, 4 GB RAM, 40 GB disk |
+| Python | 3.12 | 3.12 |
+| Node.js | 20 | 20 LTS |
+| PostgreSQL | 16 | 16 with backups |
+| Web server | Nginx | Nginx + Certbot HTTPS |
+| Domain | A domain pointing at the server | `app.yourdomain.com` |
+| Ports | 80 and 443 open | 8000 and 5432 localhost only |
+| Secrets | Valid `GEMINI_API_KEY` (`AIza...`) or `OPENAI_API_KEY`, long random `JWT_SECRET`, `SUPER_ADMIN_EMAIL` | Same, stored only in `backend/.env` |
+
+Notes: the old Gemini key (`AQ.Ab8...`) is invalid and must be rotated.
+Without a valid AI key, signup and agents work but chat returns a clear
+"AI API Key is not configured" message. Stripe checkout is a TODO stub;
+plan changes are manual/admin upgrades for now.
+
 1. Install Python 3.12, Node 20, PostgreSQL 16 and Nginx.
 2. Create the database and user:
 

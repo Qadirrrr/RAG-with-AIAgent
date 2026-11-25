@@ -55,7 +55,7 @@ export default function Conversations() {
             <ul className="divide-y divide-slate-100 max-h-[560px] overflow-y-auto">
               {list.map((c) => (
                 <li key={c.id}>
-                  <button onClick={() => open(c)} className={`w-full text-left px-5 py-4 hover:bg-slate-50 ${String(selected?.id) === String(c.id) ? 'bg-indigo-50' : ''}`}>
+                  <button onClick={() => open(c)} className={`w-full text-left px-5 py-4 hover:bg-slate-50 ${String(selected?.id) === String(c.id) ? 'bg-teal-50' : ''}`}>
                     <p className="text-sm font-semibold text-slate-800 truncate">{c.title || c.first_message || `Conversation ${String(c.id).slice(0, 8)}`}</p>
                     <p className="text-xs text-slate-500 mt-1 flex items-center gap-3">
                       <span className="flex items-center gap-1"><Bot className="w-3.5 h-3.5" /> {c.agent_name || c.agent_id || 'Agent'}</span>

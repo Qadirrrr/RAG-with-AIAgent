@@ -95,11 +95,11 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8.5rem)] bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden animate-in fade-in duration-300">
+    <div className="flex flex-col h-[calc(100vh-8.5rem)] bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden animate-in fade-in duration-300">
       {/* Chat Header */}
       <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white z-10">
         <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+          <div className="w-9 h-9 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
             <Bot className="w-5 h-5" />
           </div>
           <div>
@@ -142,13 +142,13 @@ export default function Chat() {
         {/* Loading Bubble */}
         {isLoading && (
           <div className="flex justify-start items-center space-x-3 text-slate-500 text-xs py-2">
-            <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-indigo-600 shadow-xs animate-pulse">
+            <div className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-teal-600 shadow-xs animate-pulse">
               <Sparkles className="w-4 h-4" />
             </div>
             <div className="bg-slate-50 border border-slate-200/80 rounded-2xl px-4 py-3 flex items-center space-x-2">
-              <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" />
-              <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:-.3s]" />
-              <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:-.5s]" />
+              <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" />
+              <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce [animation-delay:-.3s]" />
+              <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce [animation-delay:-.5s]" />
               <span className="text-xs text-slate-600 font-medium ml-2">Searching knowledge base and synthesizing...</span>
             </div>
           </div>
@@ -165,7 +165,7 @@ export default function Chat() {
               key={idx}
               onClick={() => handleSendMessage(suggestion)}
               disabled={isLoading}
-              className="text-xs bg-white hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 border border-slate-200 px-3 py-1.5 rounded-full transition-colors truncate max-w-xs text-left"
+              className="text-xs bg-white hover:bg-teal-50 hover:text-teal-600 text-slate-600 border border-slate-200 px-3 py-1.5 rounded-full transition-colors truncate max-w-xs text-left"
             >
               💡 {suggestion}
             </button>

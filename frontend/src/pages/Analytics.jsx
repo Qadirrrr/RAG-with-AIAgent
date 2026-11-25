@@ -43,7 +43,7 @@ export default function Analytics() {
       </div>
       <ErrorBox message={error} onRetry={load} />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard title="Total Messages" value={totalMessages} icon={MessageSquare} description="Messages answered by agents" color="indigo" />
+        <StatCard title="Total Messages" value={totalMessages} icon={MessageSquare} description="Messages answered by agents" color="teal" />
         <StatCard title="Conversations" value={totalConvs} icon={TrendingUp} description="Chat sessions started" color="blue" />
         <StatCard title="Agents" value={totalAgents} icon={Bot} description="Active AI agents" color="emerald" />
         <StatCard title="Documents" value={totalDocs} icon={FileText} description="Indexed knowledge files" color="amber" />
@@ -54,7 +54,7 @@ export default function Analytics() {
           <h3 className="font-semibold text-slate-800 mb-1">Monthly usage</h3>
           <p className="text-xs text-slate-500 mb-4">{totalMessages} of {limit || 'unlimited'} messages used this month</p>
           <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-            <div className="bg-indigo-600 h-3 rounded-full transition-all" style={{ width: `${usedPct}%` }} />
+            <div className="bg-teal-700 h-3 rounded-full transition-all" style={{ width: `${usedPct}%` }} />
           </div>
           <p className="text-xs text-slate-500 mt-2">{usedPct}% of monthly limit used</p>
         </div>
@@ -69,7 +69,7 @@ export default function Analytics() {
                 return (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
                     <span className="text-[10px] font-semibold text-slate-600">{count}</span>
-                    <div className="w-full bg-indigo-500 rounded-t-md" style={{ height: `${Math.max(4, (count / maxDaily) * 100)}px` }} title={`${d.date || d.day || ''}: ${count}`} />
+                    <div className="w-full bg-teal-500 rounded-t-md" style={{ height: `${Math.max(4, (count / maxDaily) * 100)}px` }} title={`${d.date || d.day || ''}: ${count}`} />
                     <span className="text-[10px] text-slate-400 truncate w-full text-center">{(d.date || d.day || '').slice(5)}</span>
                   </div>
                 );

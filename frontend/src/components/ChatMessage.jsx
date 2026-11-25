@@ -19,8 +19,8 @@ export default function ChatMessage({ message }) {
         <div className={`
           w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs
           ${isUser 
-            ? 'bg-indigo-600 text-white' 
-            : 'bg-white border border-slate-200 text-indigo-600 shadow-xs'
+            ? 'bg-teal-700 text-white' 
+            : 'bg-white border border-slate-200 text-teal-600 shadow-xs'
           }
         `}>
           {isUser ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
@@ -31,7 +31,7 @@ export default function ChatMessage({ message }) {
           <div className={`
             rounded-2xl px-5 py-4 text-sm leading-relaxed
             ${isUser
-              ? 'bg-indigo-600 text-white rounded-tr-xs shadow-xs'
+              ? 'bg-teal-700 text-white rounded-tr-xs shadow-xs'
               : 'bg-white text-slate-800 border border-slate-200/90 rounded-tl-xs shadow-xs'
             }
           `}>
@@ -61,7 +61,7 @@ export default function ChatMessage({ message }) {
             <div className="mt-2 text-xs">
               <button
                 onClick={() => setSourcesOpen(!sourcesOpen)}
-                className="flex items-center space-x-1.5 text-indigo-600 hover:text-indigo-700 font-medium bg-indigo-50/70 hover:bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 transition-colors"
+                className="flex items-center space-x-1.5 text-teal-600 hover:text-teal-700 font-medium bg-teal-50/70 hover:bg-teal-50 px-3 py-1.5 rounded-lg border border-teal-100 transition-colors"
               >
                 <BookOpen className="w-3.5 h-3.5" />
                 <span>Sources ({message.sources.length} document references)</span>
@@ -76,7 +76,7 @@ export default function ChatMessage({ message }) {
                       className="bg-white border border-slate-200 rounded-xl p-3 shadow-xs text-slate-600"
                     >
                       <div className="flex items-center justify-between mb-1.5 font-medium text-slate-800">
-                        <span className="truncate text-xs font-semibold text-indigo-700">
+                        <span className="truncate text-xs font-semibold text-teal-700">
                           📄 {src.document_name}
                         </span>
                         {src.page && (

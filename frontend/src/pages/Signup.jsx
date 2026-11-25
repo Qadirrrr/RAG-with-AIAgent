@@ -31,16 +31,16 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#F7F9FB] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center mx-auto shadow-lg shadow-indigo-200">
+          <div className="w-12 h-12 rounded-2xl bg-teal-700 text-white flex items-center justify-center mx-auto shadow-lg shadow-teal-200">
             <Sparkles className="w-6 h-6" />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 mt-4">Create your account</h1>
           <p className="text-sm text-slate-500 mt-1">Build your first AI agent in minutes, no code needed.</p>
         </div>
-        <form onSubmit={submit} className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-5">
+        <form onSubmit={submit} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-5">
           {error && <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-800">{error}</div>}
           <div>
             <label className={labelCls}>Full name</label>
@@ -59,7 +59,7 @@ export default function Signup() {
             {loading ? 'Creating account...' : 'Create free account'}
           </button>
           <p className="text-center text-sm text-slate-500">
-            Already have an account? <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-700">Log in</Link>
+            Already have an account? <Link to="/login" className="font-semibold text-teal-600 hover:text-teal-700">Log in</Link>
           </p>
         </form>
       </div>

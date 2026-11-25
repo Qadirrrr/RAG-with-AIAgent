@@ -51,7 +51,7 @@ export default function Admin() {
       </div>
       <ErrorBox message={error} onRetry={load} />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard title="Total Users" value={overview?.total_users ?? users.length ?? 0} icon={Users} description="Registered customers" color="indigo" />
+        <StatCard title="Total Users" value={overview?.total_users ?? users.length ?? 0} icon={Users} description="Registered customers" color="teal" />
         <StatCard title="Total Agents" value={overview?.total_agents ?? 0} icon={Bot} description="Agents across workspaces" color="emerald" />
         <StatCard title="Total Messages" value={overview?.total_messages ?? 0} icon={MessageSquare} description="Messages answered" color="blue" />
         <StatCard title="Active Subscriptions" value={overview?.active_subscriptions ?? subs.length ?? 0} icon={CreditCard} description="Paying workspaces" color="amber" />
@@ -77,7 +77,7 @@ export default function Admin() {
                   <tr key={u.id || u.email} className="border-b border-slate-50">
                     <td className="px-6 py-3 font-medium text-slate-800">{u.name || 'n/a'}</td>
                     <td className="px-6 py-3 text-slate-600">{u.email}</td>
-                    <td className="px-6 py-3"><span className="text-xs font-semibold bg-indigo-50 text-indigo-700 px-2 py-1 rounded-full capitalize">{u.plan || u.subscription || 'free'}</span></td>
+                    <td className="px-6 py-3"><span className="text-xs font-semibold bg-teal-50 text-teal-700 px-2 py-1 rounded-full capitalize">{u.plan || u.subscription || 'free'}</span></td>
                     <td className="px-6 py-3 text-slate-600">{u.created_at ? new Date(u.created_at).toLocaleDateString() : 'n/a'}</td>
                   </tr>
                 ))}

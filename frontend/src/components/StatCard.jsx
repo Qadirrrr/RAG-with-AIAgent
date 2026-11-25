@@ -1,11 +1,11 @@
 import React from 'react';
 
-export default function StatCard({ title, value, icon: Icon, description, trend, color = 'indigo' }) {
+export default function StatCard({ title, value, icon: Icon, description, trend, color = 'teal' }) {
   const colorStyles = {
-    indigo: {
-      bg: 'bg-indigo-50',
-      text: 'text-indigo-600',
-      border: 'border-indigo-100',
+    teal: {
+      bg: 'bg-teal-50',
+      text: 'text-teal-600',
+      border: 'border-teal-100',
     },
     emerald: {
       bg: 'bg-emerald-50',
@@ -24,7 +24,7 @@ export default function StatCard({ title, value, icon: Icon, description, trend,
     },
   };
 
-  const style = colorStyles[color] || colorStyles.indigo;
+  const style = colorStyles[color] || colorStyles.teal;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs hover:shadow-md transition-shadow duration-200">

@@ -90,7 +90,7 @@ export default function Playground() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center"><Bot className="w-5 h-5" /></div>
+          <div className="w-11 h-11 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center"><Bot className="w-5 h-5" /></div>
           <div>
             <h2 className="text-xl font-extrabold text-slate-900">{agent?.name || 'Agent playground'}</h2>
             <p className="text-xs text-slate-500">{agent?.provider || ''} {agent?.model ? `/ ${agent.model}` : ''} {agent?.language ? ` / ${agent.language}` : ''}</p>
@@ -98,7 +98,7 @@ export default function Playground() {
         </div>
         <div className="flex gap-2">
           <Link to={`/agents/${agentId}/knowledge`} className="inline-flex items-center gap-2 bg-white border border-slate-200 text-slate-700 font-semibold px-3.5 py-2 rounded-xl text-sm"><Files className="w-4 h-4" /> Knowledge</Link>
-          <button onClick={startNew} className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3.5 py-2 rounded-xl text-sm"><Plus className="w-4 h-4" /> New conversation</button>
+          <button onClick={startNew} className="inline-flex items-center gap-2 bg-teal-700 hover:bg-teal-800 text-white font-semibold px-3.5 py-2 rounded-xl text-sm"><Plus className="w-4 h-4" /> New conversation</button>
         </div>
       </div>
 
@@ -106,7 +106,7 @@ export default function Playground() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-5 items-start">
         <div className="bg-white rounded-2xl border border-slate-200 p-4 lg:col-span-1">
-          <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2 mb-3"><History className="w-4 h-4 text-indigo-600" /> Conversations</h3>
+          <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2 mb-3"><History className="w-4 h-4 text-teal-600" /> Conversations</h3>
           {conversations.length === 0 ? (
             <p className="text-xs text-slate-500">No conversations yet. Send a message to start the first one.</p>
           ) : (
@@ -115,7 +115,7 @@ export default function Playground() {
                 <button
                   key={c.id}
                   onClick={() => openConversation(c)}
-                  className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-colors ${String(conversationId) === String(c.id) ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}
+                  className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-colors ${String(conversationId) === String(c.id) ? 'bg-teal-50 text-teal-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'}`}
                 >
                   <span className="block truncate">{c.title || c.first_message || `Conversation ${String(c.id).slice(0, 8)}`}</span>
                   <span className="block text-[11px] text-slate-400 mt-0.5">{c.message_count ?? c.messages?.length ?? ''} {c.created_at ? new Date(c.created_at).toLocaleDateString() : ''}</span>
@@ -125,12 +125,12 @@ export default function Playground() {
           )}
         </div>
 
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-15rem)] min-h-[480px] lg:col-span-3">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-15rem)] min-h-[480px] lg:col-span-3">
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
             {messages.map((m, i) => <ChatMessage key={i} message={m} />)}
             {sending && (
               <div className="flex items-center gap-2 text-xs text-slate-500 py-2">
-                <Loader2 className="w-4 h-4 animate-spin text-indigo-600" /> Searching knowledge base and synthesizing...
+                <Loader2 className="w-4 h-4 animate-spin text-teal-600" /> Searching knowledge base and synthesizing...
               </div>
             )}
             <div ref={endRef} />

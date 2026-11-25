@@ -66,38 +66,35 @@ export default function Dashboard() {
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-indigo-700 via-indigo-600 to-indigo-800 rounded-3xl p-6 sm:p-8 text-white shadow-md relative overflow-hidden">
-        <div className="relative z-10 max-w-2xl">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-white/20 text-white backdrop-blur-xs mb-3">
+      <div className="bg-[#0F2A3D] rounded-2xl p-6 sm:p-8 text-white shadow-sm">
+        <div className="max-w-2xl">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-white mb-3">
             RAG Knowledge System Active
           </span>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
             Intelligent Document Agent
           </h2>
-          <p className="mt-2 text-indigo-100 text-sm sm:text-base leading-relaxed">
+          <p className="mt-2 text-slate-300 text-sm sm:text-base leading-relaxed">
             Upload enterprise documents (PDF, DOCX, TXT), index semantic vectors with ChromaDB, and query with OpenAI Agent retrieval.
           </p>
 
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               to="/documents"
-              className="inline-flex items-center space-x-2 bg-white text-indigo-700 hover:bg-indigo-50 font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors shadow-xs"
+              className="inline-flex items-center space-x-2 bg-white text-[#0F2A3D] hover:bg-slate-100 font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors shadow-sm"
             >
               <Upload className="w-4 h-4" />
               <span>Upload Documents</span>
             </Link>
             <Link
               to="/chat"
-              className="inline-flex items-center space-x-2 bg-indigo-500/40 hover:bg-indigo-500/60 text-white font-semibold px-4 py-2.5 rounded-xl text-sm border border-white/20 transition-colors"
+              className="inline-flex items-center space-x-2 bg-teal-700 hover:bg-teal-800 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors shadow-sm"
             >
               <MessageSquare className="w-4 h-4" />
               <span>Start Agent Chat</span>
             </Link>
           </div>
         </div>
-
-        {/* Decorative circle */}
-        <div className="absolute right-[-20px] bottom-[-40px] w-64 h-64 bg-white/5 rounded-full pointer-events-none" />
       </div>
 
       {/* Error alert if backend unreachable */}
@@ -115,7 +112,7 @@ export default function Dashboard() {
           value={stats.total_documents}
           icon={FileText}
           description="PDF, DOCX, and TXT files"
-          color="indigo"
+          color="teal"
         />
         <StatCard
           title="Processed Documents"
@@ -146,7 +143,7 @@ export default function Dashboard() {
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs">
             <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center space-x-2">
-              <Activity className="w-5 h-5 text-indigo-600" />
+              <Activity className="w-5 h-5 text-teal-600" />
               <span>System Status</span>
             </h3>
 
@@ -161,14 +158,14 @@ export default function Dashboard() {
 
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <span className="text-slate-500">AI Provider</span>
-                <span className="font-mono text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded uppercase">
+                <span className="font-mono text-xs font-semibold text-teal-600 bg-teal-50 px-2 py-0.5 rounded uppercase">
                   {health?.provider === 'gemini' ? 'Google Gemini' : health?.provider === 'openai' ? 'OpenAI' : 'None'}
                 </span>
               </div>
 
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <span className="text-slate-500">AI Model</span>
-                <span className="font-mono text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                <span className="font-mono text-xs font-semibold text-teal-600 bg-teal-50 px-2 py-0.5 rounded">
                   {health?.model || 'gemini-1.5-flash'}
                 </span>
               </div>
@@ -198,10 +195,10 @@ export default function Dashboard() {
             <div>
               <div className="flex items-center justify-between mb-5">
                 <h3 className="text-base font-semibold text-slate-800 flex items-center space-x-2">
-                  <Clock className="w-5 h-5 text-indigo-600" />
+                  <Clock className="w-5 h-5 text-teal-600" />
                   <span>Recent Activity</span>
                 </h3>
-                <Link to="/documents" className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center space-x-1">
+                <Link to="/documents" className="text-xs font-semibold text-teal-600 hover:text-teal-700 flex items-center space-x-1">
                   <span>View all documents</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
@@ -218,7 +215,7 @@ export default function Dashboard() {
                         <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
                           {item.type === 'upload' && <Upload className="w-4 h-4 text-emerald-600" />}
                           {item.type === 'delete' && <Clock className="w-4 h-4 text-rose-500" />}
-                          {item.type === 'chat' && <MessageSquare className="w-4 h-4 text-indigo-600" />}
+                          {item.type === 'chat' && <MessageSquare className="w-4 h-4 text-teal-600" />}
                           {!['upload', 'delete', 'chat'].includes(item.type) && <Activity className="w-4 h-4 text-slate-500" />}
                         </div>
                         <div className="truncate">

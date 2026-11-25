@@ -46,7 +46,7 @@ export default function Billing() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-extrabold text-slate-900">Billing and plans</h2>
-        <p className="text-sm text-slate-500 mt-1">Current plan for <span className="font-semibold text-slate-700">{selected?.name}</span>: <span className="font-semibold text-indigo-700 capitalize">{currentPlanId}</span></p>
+        <p className="text-sm text-slate-500 mt-1">Current plan for <span className="font-semibold text-slate-700">{selected?.name}</span>: <span className="font-semibold text-teal-700 capitalize">{currentPlanId}</span></p>
       </div>
       <ErrorBox message={error} onRetry={load} />
       {notice && <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-sm text-emerald-800">{notice}</div>}
@@ -64,10 +64,10 @@ export default function Billing() {
             `${plan.documents_limit ?? '?'} documents`,
           ];
           return (
-            <div key={id} className={`rounded-2xl border p-6 flex flex-col ${isCurrent ? 'border-indigo-600 ring-2 ring-indigo-100 bg-indigo-50/40' : 'border-slate-200 bg-white'}`}>
+            <div key={id} className={`rounded-2xl border p-6 flex flex-col ${isCurrent ? 'border-teal-600 ring-2 ring-teal-100 bg-teal-50/40' : 'border-slate-200 bg-white'}`}>
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-slate-900">{plan.name}</h3>
-                {isCurrent && <span className="text-[11px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full">Current</span>}
+                {isCurrent && <span className="text-[11px] font-bold bg-teal-700 text-white px-2 py-0.5 rounded-full">Current</span>}
               </div>
               <p className="mt-2"><span className="text-3xl font-extrabold text-slate-900">${plan.price ?? 0}</span><span className="text-sm text-slate-500"> / {plan.interval || 'month'}</span></p>
               <ul className="mt-5 space-y-2.5 flex-1">
@@ -78,7 +78,7 @@ export default function Billing() {
               <button
                 onClick={() => changePlan(plan)}
                 disabled={isCurrent || changing === id}
-                className={`mt-6 font-semibold px-4 py-2.5 rounded-xl text-sm ${isCurrent ? 'bg-slate-100 text-slate-400 cursor-default' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+                className={`mt-6 font-semibold px-4 py-2.5 rounded-xl text-sm ${isCurrent ? 'bg-slate-100 text-slate-400 cursor-default' : 'bg-teal-700 hover:bg-teal-800 text-white'}`}
               >
                 {changing === id ? <span className="inline-flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Changing...</span> : isCurrent ? 'Current plan' : `Change to ${plan.name}`}
               </button>

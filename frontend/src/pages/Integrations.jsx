@@ -113,7 +113,7 @@ export default function Integrations() {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6">
-        <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Key className="w-4 h-4 text-indigo-600" /> API keys</h3>
+        <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Key className="w-4 h-4 text-teal-600" /> API keys</h3>
         <p className="text-sm text-slate-500 mt-1">Keys are shown in full only once, right after creation. Store them safely.</p>
         {newKey && (
           <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
