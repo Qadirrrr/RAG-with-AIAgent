@@ -665,3 +665,85 @@ def test_delete_one_conversation_keeps_the_other(client):
     r = client.get(f"/api/workspaces/{ws_id}/conversations", headers=h)
     assert r.status_code == 200, r.text
     assert [c["id"] for c in r.json()] == [second]
+
+
+# ---------------------------------------------------------------------------
+# Pulled-model fallback: a chatbot stored with a model that is not pulled
+# on the Ollama server must chat with the default model instead of 404ing.
+# ---------------------------------------------------------------------------
+
+def test_resolve_chat_model_falls_back_when_stored_model_not_pulled(monkeypatch):
+    import app.services.rag_agent as rag
+    monkeypatch.setattr(rag, "_get_pulled_model_names",
+                        lambda: {"qwen2.5:7b", "qwen2.5:3b", "bge-m3:latest"})
+    # qwen2.5:14b is a valid tag but not pulled: fall back to the default.
+    assert rag.resolve_chat_model("qwen2.5:14b") == "qwen2.5:7b"
+
+
+def test_resolve_chat_model_keeps_pulled_model(monkeypatch):
+    import app.services.rag_agent as rag
+    monkeypatch.setattr(rag, "_get_pulled_model_names",
+                        lambda: {"qwen2.5:7b", "qwen2.5:3b", "bge-m3:latest"})
+    assert rag.resolve_chat_model("qwen2.5:3b") == "qwen2.5:3b"
+    assert rag.resolve_chat_model("qwen2.5:7b") == "qwen2.5:7b"
+
+
+def test_resolve_chat_model_unchanged_when_tags_fetch_fails(monkeypatch):
+    import app.services.rag_agent as rag
+    monkeypatch.setattr(rag, "_get_pulled_model_names", lambda: None)
+    # Ollama unreachable: today's behaviour, stored model returned as is
+    # and the normal unavailable/error handling takes over downstream.
+    assert rag.resolve_chat_model("qwen2.5:14b") == "qwen2.5:14b"
+    assert rag.resolve_chat_model("qwen2.5:3b") == "qwen2.5:3b"
+
+
+def test_get_llm_builds_fallback_model(monkeypatch):
+    import types
+
+    import app.services.rag_agent as rag
+
+    captured = {}
+
+    class FakeChatOllama:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    fake_module = types.ModuleType("langchain_ollama")
+    fake_module.ChatOllama = FakeChatOllama
+    monkeypatch.setitem(sys.modules, "langchain_ollama", fake_module)
+    monkeypatch.setattr(rag, "_get_pulled_model_names", lambda: {"qwen2.5:7b"})
+
+    llm = rag.RAGAgentService()._get_llm(model="qwen2.5:14b")
+    assert llm is not None
+    assert captured["model"] == "qwen2.5:7b"
+
+
+# ---------------------------------------------------------------------------
+# GET /api/ollama/models: dynamic model list for the chatbot form.
+# ---------------------------------------------------------------------------
+
+def test_ollama_models_endpoint_lists_pulled_chat_models(client, monkeypatch):
+    import app.services.rag_agent as rag
+    monkeypatch.setattr(rag, "_get_pulled_model_names",
+                        lambda: {"qwen2.5:7b", "qwen2.5:3b", "bge-m3:latest"})
+    token, _ = _auth(client, "models@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    r = client.get("/api/ollama/models", headers=h)
+    assert r.status_code == 200, r.text
+    data = r.json()
+    # The BGE embedding model is excluded; only chat models are listed.
+    assert sorted(data["models"]) == ["qwen2.5:3b", "qwen2.5:7b"]
+    assert data["default"] == "qwen2.5:7b"
+    # The endpoint is authenticated.
+    r = client.get("/api/ollama/models")
+    assert r.status_code == 401, r.text
+
+
+def test_ollama_models_endpoint_when_ollama_unreachable(client, monkeypatch):
+    import app.services.rag_agent as rag
+    monkeypatch.setattr(rag, "_get_pulled_model_names", lambda: None)
+    token, _ = _auth(client, "modelsdown@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    r = client.get("/api/ollama/models", headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json() == {"models": [], "default": "qwen2.5:7b"}

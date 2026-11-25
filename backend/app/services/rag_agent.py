@@ -1,5 +1,8 @@
 import os
-from typing import List, Dict, Any, Optional
+import time
+from typing import List, Dict, Any, Optional, Set
+
+import httpx
 # The chat model client (ChatOllama from langchain_ollama) is imported
 # lazily inside _get_llm: Ollama is the only AI provider in this
 # platform, and there are no cloud providers to fall back to.
@@ -25,6 +28,76 @@ def is_model_allowed(provider: str, model: str) -> bool:
     return bool(model) and (model in ALLOWED_MODELS["ollama"] or model.startswith("qwen"))
 
 
+# ---------------------------------------------------------------------------
+# Pulled-model fallback
+#
+# A chatbot can be stored with any qwen* tag, but the self-hosted Ollama
+# server only serves models that were actually pulled onto it. Asking
+# Ollama for an unpulled model fails every chat with a 404 "model not
+# found", so before building the LLM we check the server's pulled list
+# (GET /api/tags, the same endpoint the health route uses) and fall back
+# to the configured default model when the stored one is missing. The
+# stored model in the DB is never changed; the fallback happens at call
+# time only. The pulled list is cached briefly so chat is not slowed by
+# an extra request on every message. If the tags fetch fails (Ollama
+# unreachable), the resolver returns the requested model unchanged and
+# the existing unavailable/error handling runs exactly as before.
+# ---------------------------------------------------------------------------
+_TAGS_TIMEOUT_SECONDS = 3.0
+_TAGS_CACHE_SECONDS = 30.0
+_pulled_models_cache: Dict[str, Any] = {"names": None, "fetched_at": 0.0}
+
+
+def _get_pulled_model_names() -> Optional[Set[str]]:
+    """Names of the models pulled on the Ollama server, or None on failure."""
+    now = time.monotonic()
+    cached = _pulled_models_cache["names"]
+    if cached is not None and now - _pulled_models_cache["fetched_at"] < _TAGS_CACHE_SECONDS:
+        return cached
+    try:
+        resp = httpx.get(settings.OLLAMA_BASE_URL.rstrip("/") + "/api/tags",
+                         timeout=_TAGS_TIMEOUT_SECONDS)
+        if resp.status_code != 200:
+            return None
+        names = {
+            entry.get("name", "")
+            for entry in resp.json().get("models", [])
+            if isinstance(entry, dict) and entry.get("name")
+        }
+    except Exception:
+        return None
+    _pulled_models_cache["names"] = names
+    _pulled_models_cache["fetched_at"] = now
+    return names
+
+
+def _is_pulled(model: str, pulled: Set[str]) -> bool:
+    if model in pulled:
+        return True
+    # Ollama lists untagged models with a ":latest" suffix, so a stored
+    # bare name (for example "qwen2.5") also matches "qwen2.5:latest".
+    return ":" not in model and f"{model}:latest" in pulled
+
+
+def resolve_chat_model(model: Optional[str]) -> str:
+    """Resolve the model a chat should actually run with.
+
+    Returns the stored model when it is pulled on the Ollama server.
+    When it is not pulled, falls back to settings.OLLAMA_MODEL if that
+    one is pulled. When the pulled list cannot be fetched, returns the
+    stored model unchanged so a down server is handled by the existing
+    error paths, not masked here.
+    """
+    requested = model if is_model_allowed("ollama", model or "") else settings.OLLAMA_MODEL
+    pulled = _get_pulled_model_names()
+    if pulled is None or _is_pulled(requested, pulled):
+        return requested
+    default = settings.OLLAMA_MODEL
+    if _is_pulled(default, pulled):
+        return default
+    return requested
+
+
 class RAGAgentService:
     def __init__(self):
         pass
@@ -36,7 +109,7 @@ class RAGAgentService:
         Ollama is the only provider and needs no API key. The provider
         argument is accepted for call compatibility and ignored.
         """
-        chosen_model = model if is_model_allowed("ollama", model or "") else settings.OLLAMA_MODEL
+        chosen_model = resolve_chat_model(model)
         try:
             from langchain_ollama import ChatOllama
             return ChatOllama(

@@ -52,13 +52,13 @@ export const FALLBACK_PLANS = [
   { id: 'scale', name: 'Scale', price: 99, currency: 'USD', interval: 'month', agents_limit: 50, messages_limit: 50000, documents_limit: 1000, features: ['50 AI agents', '50,000 messages per month', '1,000 documents', 'REST API access', 'Advanced analytics', 'Dedicated support'] },
 ];
 
-export const MODEL_OPTIONS = {
-  ollama: ['qwen2.5:7b', 'qwen2.5:3b', 'qwen2.5:14b'],
-};
+
 
 export const apiService = {
   // Legacy health and stats
   getHealth: async () => (await apiClient.get('/api/health')).data,
+  // Chat models actually pulled on the self-hosted Ollama server.
+  getOllamaModels: async () => (await apiClient.get('/api/ollama/models')).data,
   getStats: async () => (await apiClient.get('/api/stats')).data,
   getDocuments: async () => (await apiClient.get('/api/documents')).data,
   uploadDocument: async (file, onUploadProgress) => {

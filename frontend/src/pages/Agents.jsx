@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Bot, Plus, FlaskConical, Files, MessageSquare, Pencil, Trash2, Loader2 } from 'lucide-react';
-import apiService, { apiError, MODEL_OPTIONS } from '../services/api';
+import apiService, { apiError } from '../services/api';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { Spinner, ErrorBox, EmptyState, Modal, inputCls, labelCls, btnPrimary, btnSecondary } from '../components/ui';
 
@@ -36,6 +36,21 @@ export default function Agents() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
   const [creatingWs, setCreatingWs] = useState(false);
+  // Models actually pulled on the Ollama server, loaded when the form
+  // opens. Null until loaded; the select falls back to the default.
+  const [pulledModels, setPulledModels] = useState(null);
+
+  const loadModels = useCallback(async () => {
+    try {
+      const data = await apiService.getOllamaModels();
+      const list = Array.isArray(data?.models) ? data.models : [];
+      setPulledModels(list.length ? list : [data?.default || 'qwen2.5:7b']);
+    } catch {
+      setPulledModels(['qwen2.5:7b']);
+    }
+  }, []);
+
+  useEffect(() => { if (showModal) loadModels(); }, [showModal, loadModels]);
 
   const load = useCallback(async () => {
     if (!selectedId) { setLoading(false); setAgents([]); return; }
@@ -69,7 +84,7 @@ export default function Agents() {
       instructions: agent.instructions || '',
       language: agent.language || 'en',
       provider: 'ollama',
-      model: agent.model || MODEL_OPTIONS.ollama[0],
+      model: agent.model || 'qwen2.5:7b',
       temperature: agent.temperature ?? 0.7,
       greeting: agent.greeting || '',
       mode: agent.mode || 'rag',
@@ -226,9 +241,21 @@ export default function Agents() {
               </div>
               <div>
                 <label className={labelCls}>Model</label>
-                <select className={inputCls} value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}>
-                  {MODEL_OPTIONS.ollama.map((m) => <option key={m} value={m}>{m}</option>)}
-                </select>
+                {(() => {
+                  const options = pulledModels && pulledModels.length ? pulledModels : ['qwen2.5:7b'];
+                  const storedNotOnServer = form.model && !options.includes(form.model);
+                  return (
+                    <>
+                      <select className={inputCls} value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}>
+                        {storedNotOnServer && <option value={form.model}>{form.model} (not on server)</option>}
+                        {options.map((m) => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                      {storedNotOnServer
+                        ? <p className="text-xs text-amber-600 mt-1">This model is not pulled on the server. Chats will use the default model until it is pulled.</p>
+                        : <p className="text-xs text-slate-500 mt-1">Only models pulled on your Ollama server are listed.</p>}
+                    </>
+                  );
+                })()}
               </div>
               <div>
                 <label className={labelCls}>Temperature: {form.temperature}</label>
