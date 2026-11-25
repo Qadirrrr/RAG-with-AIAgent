@@ -33,7 +33,7 @@ export default function Billing() {
     setError(null);
     try {
       await apiService.changeSubscription(selectedId, plan.id || plan.name);
-      setNotice(`Plan changed to ${plan.name}. Your workspace is now on the ${plan.name} plan.`);
+      setNotice(`Plan changed to ${plan.name}. Your project is now on the ${plan.name} plan.`);
     } catch (err) {
       setError(apiError(err, 'Could not change plan.'));
     } finally { setChanging(null); }
@@ -51,7 +51,7 @@ export default function Billing() {
       <ErrorBox message={error} onRetry={load} />
       {notice && <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-sm text-emerald-800">{notice}</div>}
       <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-sm text-amber-800">
-        Payment checkout is manual for this MVP: changing a plan here records the new plan on the workspace. Online card checkout is not connected yet, and no fake Stripe checkout is shown.
+        Payment checkout is manual for this MVP: changing a plan here records the new plan on the project. Online card checkout is not connected yet, and no fake Stripe checkout is shown.
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -94,7 +94,7 @@ export default function Billing() {
             <thead>
               <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
                 <th className="py-2 pr-4 font-semibold">Plan</th>
-                <th className="py-2 pr-4 font-semibold">Agents</th>
+                <th className="py-2 pr-4 font-semibold">Chatbots</th>
                 <th className="py-2 pr-4 font-semibold">Messages / month</th>
                 <th className="py-2 font-semibold">Documents</th>
               </tr>

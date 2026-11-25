@@ -110,6 +110,10 @@ class AgentCreate(BaseModel):
     model: str = "gemini-3.5-flash-lite"
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
     greeting: str = ""
+    description: str = ""
+    is_active: bool = True
+    mode: str = "rag"
+    show_citations: bool = False
 
 
 class AgentUpdate(BaseModel):
@@ -120,6 +124,10 @@ class AgentUpdate(BaseModel):
     model: Optional[str] = None
     temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
     greeting: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+    mode: Optional[str] = None
+    show_citations: Optional[bool] = None
 
 
 class AgentOut(BaseModel):
@@ -132,6 +140,10 @@ class AgentOut(BaseModel):
     model: str = "gemini-3.5-flash-lite"
     temperature: float = 0.2
     greeting: str = ""
+    description: str = ""
+    is_active: bool = True
+    mode: str = "rag"
+    show_citations: bool = False
     created_at: Optional[datetime] = None
 
 
@@ -152,6 +164,8 @@ class TenantDocumentOut(BaseModel):
 
 class UrlIngestRequest(BaseModel):
     url: str
+    # "url" for a single page (default), "sitemap" to crawl a sitemap.xml
+    type: Optional[str] = None
 
 
 class TenantChatRequest(BaseModel):

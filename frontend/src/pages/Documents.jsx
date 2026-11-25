@@ -60,7 +60,7 @@ export default function Documents() {
             Knowledge Documents
           </h2>
           <p className="text-slate-500 text-sm mt-1">
-            All documents in this workspace, across its agents.
+            All documents in this project, across its chatbots.
           </p>
         </div>
 
@@ -74,10 +74,10 @@ export default function Documents() {
         </button>
       </div>
 
-      {/* Upload happens per agent, so files always belong to one workspace and one agent */}
+      {/* Upload happens per chatbot, so files always belong to one project and one chatbot */}
       <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <p className="text-sm text-slate-600">Documents belong to an agent in this workspace. Add files or website URLs from an agent knowledge base.</p>
-        <Link to="/agents" className="inline-flex items-center justify-center bg-teal-700 hover:bg-teal-800 text-white font-semibold px-4 py-2 rounded-xl text-sm shrink-0">Go to Agents</Link>
+        <p className="text-sm text-slate-600">Documents belong to a chatbot in this project. Add files or website URLs from a chatbot knowledge base.</p>
+        <Link to="/agents" className="inline-flex items-center justify-center bg-teal-700 hover:bg-teal-800 text-white font-semibold px-4 py-2 rounded-xl text-sm shrink-0">Go to Chatbots</Link>
       </div>
 
       {/* Error alert */}

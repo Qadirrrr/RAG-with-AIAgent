@@ -38,7 +38,7 @@ export default function Signup() {
             <Bot className="w-6 h-6" />
           </div>
           <h1 className="text-2xl font-extrabold text-slate-900 mt-4">Create your account</h1>
-          <p className="text-sm text-slate-500 mt-1">Build your first AI agent in minutes, no code needed.</p>
+          <p className="text-sm text-slate-500 mt-1">Build your first chatbot in minutes, no code needed.</p>
         </div>
         <form onSubmit={submit} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-5">
           {error && <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-800">{error}</div>}

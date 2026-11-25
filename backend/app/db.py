@@ -130,6 +130,10 @@ class Agent(Base):
     model = Column(String(128), default="gemini-3.5-flash-lite", nullable=False)
     temperature = Column(Float, default=0.2, nullable=False)
     greeting = Column(Text, default="", nullable=False)
+    description = Column(Text, default="", nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    mode = Column(String(16), default="rag", nullable=False)
+    show_citations = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
 
     workspace = relationship("Workspace", back_populates="agents")
@@ -227,6 +231,35 @@ def init_db():
         if path and path != ":memory:":
             os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     Base.metadata.create_all(bind=engine)
+    _migrate_agent_columns()
+
+
+# Columns added to the agents table after the first release. Existing
+# databases (SQLite or Postgres) do not gain them from create_all, so
+# add any missing column with a safe server-side default.
+_AGENT_COLUMN_DDL = {
+    "description": "TEXT NOT NULL DEFAULT ''",
+    "is_active": "BOOLEAN NOT NULL DEFAULT {true}",
+    "mode": "VARCHAR(16) NOT NULL DEFAULT 'rag'",
+    "show_citations": "BOOLEAN NOT NULL DEFAULT {false}",
+}
+
+
+def _migrate_agent_columns():
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    if "agents" not in inspector.get_table_names():
+        return
+    existing = {c["name"] for c in inspector.get_columns("agents")}
+    is_sqlite = engine.dialect.name == "sqlite"
+    with engine.begin() as conn:
+        for name, ddl in _AGENT_COLUMN_DDL.items():
+            if name in existing:
+                continue
+            rendered = ddl.format(true="1" if is_sqlite else "TRUE",
+                                  false="0" if is_sqlite else "FALSE")
+            conn.execute(text(f"ALTER TABLE agents ADD COLUMN {name} {rendered}"))
 
 
 def ensure_free_subscription(db, workspace_id: str) -> Subscription:

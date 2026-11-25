@@ -1,3 +1,4 @@
+import csv
 import os
 from typing import List, Tuple
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -43,6 +44,8 @@ class DocumentLoaderService:
             docs = self._load_docx(file_path, document_id, original_filename)
         elif ext in [".txt", ".md"]:
             docs = self._load_txt(file_path, document_id, original_filename)
+        elif ext == ".csv":
+            docs = self._load_csv(file_path, document_id, original_filename)
         else:
             raise ValueError(f"Unsupported file format: {ext}")
 
@@ -96,6 +99,40 @@ class DocumentLoaderService:
                 }
             )
         ]
+
+    def _load_csv(self, file_path: str, document_id: str, original_filename: str) -> List[Document]:
+        """Load a CSV as one document per row, rendered as 'column: value' lines."""
+        try:
+            with open(file_path, "r", encoding="utf-8", newline="") as f:
+                raw = f.read()
+        except UnicodeDecodeError:
+            with open(file_path, "r", encoding="latin-1", newline="") as f:
+                raw = f.read()
+        rows = list(csv.reader(raw.splitlines()))
+        if not rows:
+            return [Document(page_content="", metadata={
+                "document_id": document_id, "document_name": original_filename, "page": 1})]
+        headers = [h.strip() for h in rows[0]]
+        docs = []
+        for row_num, row in enumerate(rows[1:], start=2):
+            lines = []
+            for i, value in enumerate(row):
+                col = headers[i] if i < len(headers) and headers[i] else f"column_{i + 1}"
+                lines.append(f"{col}: {value}")
+            text = "\n".join(lines).strip()
+            if text:
+                docs.append(Document(
+                    page_content=text,
+                    metadata={
+                        "document_id": document_id,
+                        "document_name": original_filename,
+                        "page": row_num,
+                    }
+                ))
+        if not docs:
+            docs.append(Document(page_content="", metadata={
+                "document_id": document_id, "document_name": original_filename, "page": 1}))
+        return docs
 
     def _load_txt(self, file_path: str, document_id: str, original_filename: str) -> List[Document]:
         # Try UTF-8 first, fallback to latin-1

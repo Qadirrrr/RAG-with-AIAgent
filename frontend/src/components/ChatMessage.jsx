@@ -63,6 +63,13 @@ export default function ChatMessage({ message }) {
               </div>
             )}
 
+            {/* Source line: only rendered when this chatbot has citations enabled */}
+            {!isUser && Array.isArray(message.sources) && message.sources.length > 0 && (
+              <div className="mt-3 pt-2 border-t border-slate-100 text-[11px] text-slate-500">
+                Sources: {[...new Set(message.sources.map((s) => (typeof s === 'string' ? s : s.document_name)).filter(Boolean))].join(', ')}
+              </div>
+            )}
+
             {/* Action Bar */}
             {!isUser && (
               <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">

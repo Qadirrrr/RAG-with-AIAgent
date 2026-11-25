@@ -47,14 +47,14 @@ export default function Admin() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-extrabold text-slate-900">Super-admin dashboard</h2>
-        <p className="text-sm text-slate-500 mt-1">Manage customers, agents and subscriptions across all workspaces.</p>
+        <p className="text-sm text-slate-500 mt-1">Manage customers, chatbots and subscriptions across all projects.</p>
       </div>
       <ErrorBox message={error} onRetry={load} />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard title="Total Users" value={overview?.total_users ?? users.length ?? 0} icon={Users} description="Registered customers" color="teal" />
-        <StatCard title="Total Agents" value={overview?.total_agents ?? 0} icon={Bot} description="Agents across workspaces" color="emerald" />
+        <StatCard title="Total Chatbots" value={overview?.total_agents ?? 0} icon={Bot} description="Chatbots across projects" color="emerald" />
         <StatCard title="Total Messages" value={overview?.total_messages ?? 0} icon={MessageSquare} description="Messages answered" color="blue" />
-        <StatCard title="Active Subscriptions" value={overview?.active_subscriptions ?? subs.length ?? 0} icon={CreditCard} description="Paying workspaces" color="amber" />
+        <StatCard title="Active Subscriptions" value={overview?.active_subscriptions ?? subs.length ?? 0} icon={CreditCard} description="Paying projects" color="amber" />
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
@@ -93,7 +93,7 @@ export default function Admin() {
           <ul className="divide-y divide-slate-100">
             {subs.map((s, i) => (
               <li key={s.id || i} className="px-6 py-3.5 flex items-center justify-between text-sm">
-                <span className="font-medium text-slate-800">{s.workspace_name || s.workspace || s.user_email || 'Workspace'}</span>
+                <span className="font-medium text-slate-800">{s.workspace_name || s.workspace || s.user_email || 'Project'}</span>
                 <span className="text-slate-500 capitalize">{s.plan || 'free'} {s.status ? `/ ${s.status}` : ''}</span>
               </li>
             ))}

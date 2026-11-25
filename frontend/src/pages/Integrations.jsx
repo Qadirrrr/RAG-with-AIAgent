@@ -25,7 +25,7 @@ export default function Integrations() {
       setAgents(list);
       if (list.length > 0) setAgentId((prev) => prev || list[0].id);
     } catch (err) {
-      setError(apiError(err, 'Could not load agents.'));
+      setError(apiError(err, 'Could not load chatbots.'));
     } finally { setLoading(false); }
   }, [selectedId]);
 
@@ -68,7 +68,7 @@ export default function Integrations() {
 
   if (loading) return <Spinner label="Loading integrations..." />;
   if (!selectedId) return <EmptyState icon={Plug} title="No workspace selected" text="Select a workspace from the sidebar to manage integrations." />;
-  if (agents.length === 0) return <EmptyState icon={Plug} title="No agents yet" text="Create an agent first, then come back here to get its website widget and API key." />;
+  if (agents.length === 0) return <EmptyState icon={Plug} title="No chatbots yet" text="Create a chatbot first, then come back here to get its website widget and API key." />;
 
   const selectedAgent = agents.find((a) => String(a.id) === String(agentId));
   const widgetSnippet = `<script src="${API_BASE_URL}/widget.js" data-agent-key="YOUR_API_KEY" data-api-url="${API_BASE_URL}"></script>`;
@@ -78,12 +78,12 @@ export default function Integrations() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-extrabold text-slate-900">Integrations</h2>
-        <p className="text-sm text-slate-500 mt-1">Embed your agent on a website or call it from your own app.</p>
+        <p className="text-sm text-slate-500 mt-1">Embed your chatbot on a website or call it from your own app.</p>
       </div>
       <ErrorBox message={error} onRetry={loadAgents} />
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6">
-        <label className={labelCls}>Agent</label>
+        <label className={labelCls}>Chatbot</label>
         <select className={inputCls + ' max-w-md'} value={agentId} onChange={(e) => setAgentId(e.target.value)}>
           {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
@@ -103,7 +103,7 @@ export default function Integrations() {
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6">
         <h3 className="font-semibold text-slate-800">REST API</h3>
-        <p className="text-sm text-slate-500 mt-1">Send a message to this agent from any server or app.</p>
+        <p className="text-sm text-slate-500 mt-1">Send a message to this chatbot from any server or app.</p>
         <div className="relative mt-4">
           <pre className="bg-slate-900 text-slate-100 text-xs sm:text-sm rounded-xl p-4 overflow-x-auto whitespace-pre-wrap break-all">{curlExample}</pre>
           <button onClick={() => copy(curlExample, 'curl')} className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
@@ -129,7 +129,7 @@ export default function Integrations() {
           <button type="submit" disabled={creating} className={btnPrimary + ' shrink-0'}>{creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Create key</button>
         </form>
         {keys.length === 0 ? (
-          <p className="text-sm text-slate-500 mt-4">No API keys yet for this agent.</p>
+          <p className="text-sm text-slate-500 mt-4">No API keys yet for this chatbot.</p>
         ) : (
           <ul className="divide-y divide-slate-100 mt-4">
             {keys.map((k) => (

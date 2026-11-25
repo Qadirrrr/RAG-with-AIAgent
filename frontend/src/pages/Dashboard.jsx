@@ -101,7 +101,7 @@ export default function Dashboard() {
               className="inline-flex items-center space-x-2 bg-teal-700 hover:bg-teal-800 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors shadow-sm"
             >
               <MessageSquare className="w-4 h-4" />
-              <span>Start Agent Chat</span>
+              <span>Start Chatbot Chat</span>
             </Link>
           </div>
         </div>
@@ -128,7 +128,7 @@ export default function Dashboard() {
           title="Processed Documents"
           value={stats.processed_documents}
           icon={CheckCircle2}
-          description="Ready in this workspace"
+          description="Ready in this project"
           color="emerald"
         />
         <StatCard

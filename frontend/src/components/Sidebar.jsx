@@ -9,7 +9,7 @@ import WorkspaceSwitcher from './WorkspaceSwitcher';
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-  { name: 'Agents', path: '/agents', icon: Bot },
+  { name: 'Chatbots', path: '/agents', icon: Bot },
   { name: 'Conversations', path: '/conversations', icon: History },
   { name: 'Analytics', path: '/analytics', icon: BarChart3 },
   { name: 'Billing', path: '/billing', icon: CreditCard },

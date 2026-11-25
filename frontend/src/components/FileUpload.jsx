@@ -38,12 +38,12 @@ export default function FileUpload({ onUploadSuccess }) {
     setSuccessMessage(null);
 
     // Validate extension
-    const validExtensions = ['.pdf', '.docx', '.doc', '.txt', '.md'];
+    const validExtensions = ['.pdf', '.docx', '.doc', '.txt', '.md', '.csv'];
     const fileName = file.name.toLowerCase();
     const isValid = validExtensions.some(ext => fileName.endsWith(ext));
 
     if (!isValid) {
-      setErrorMessage(`Invalid file format. Please upload PDF, DOCX, or TXT files.`);
+      setErrorMessage(`Invalid file format. Please upload PDF, DOCX, TXT, MD or CSV files.`);
       return;
     }
 
@@ -97,7 +97,7 @@ export default function FileUpload({ onUploadSuccess }) {
           type="file"
           ref={fileInputRef}
           onChange={handleFileSelect}
-          accept=".pdf,.docx,.doc,.txt,.md"
+          accept=".pdf,.docx,.doc,.txt,.md,.csv"
           className="hidden"
         />
 
@@ -115,7 +115,7 @@ export default function FileUpload({ onUploadSuccess }) {
               {uploading ? 'Processing document with LangChain...' : 'Click or drag file here to upload'}
             </p>
             <p className="text-xs text-slate-500 mt-1">
-              Supports PDF, DOCX, and TXT files (up to 25MB)
+              Supports PDF, DOCX, TXT, MD and CSV files (up to 25MB)
             </p>
           </div>
 

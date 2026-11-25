@@ -45,11 +45,11 @@ export default function Conversations() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-extrabold text-slate-900">Conversations</h2>
-        <p className="text-sm text-slate-500 mt-1">Every chat your agents have with visitors, in one place.</p>
+        <p className="text-sm text-slate-500 mt-1">Every chat your chatbots have with visitors, in one place.</p>
       </div>
       <ErrorBox message={error} onRetry={load} />
       {list.length === 0 ? (
-        <EmptyState icon={MessageSquare} title="No conversations yet" text="Conversations appear here once someone chats with one of your agents in the playground, widget or API." />
+        <EmptyState icon={MessageSquare} title="No conversations yet" text="Conversations appear here once someone chats with one of your chatbots in the playground, widget or API." />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden lg:col-span-1">
@@ -59,7 +59,7 @@ export default function Conversations() {
                   <button onClick={() => open(c)} className={`w-full text-left px-5 py-4 hover:bg-slate-50 ${String(selected?.id) === String(c.id) ? 'bg-teal-50' : ''}`}>
                     <p className="text-sm font-semibold text-slate-800 truncate">{c.title || c.first_message || `Conversation ${String(c.id).slice(0, 8)}`}</p>
                     <p className="text-xs text-slate-500 mt-1 flex items-center gap-3">
-                      <span className="flex items-center gap-1"><Bot className="w-3.5 h-3.5" /> {c.agent_name || c.agent_id || 'Agent'}</span>
+                      <span className="flex items-center gap-1"><Bot className="w-3.5 h-3.5" /> {c.agent_name || c.agent_id || 'Chatbot'}</span>
                       <span>{c.message_count ?? c.messages?.length ?? 0} messages</span>
                       <span>{c.created_at ? new Date(c.created_at).toLocaleDateString() : ''}</span>
                     </p>

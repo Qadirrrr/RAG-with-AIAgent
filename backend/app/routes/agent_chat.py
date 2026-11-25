@@ -4,6 +4,7 @@ Both use the same RAG pipeline with the agent's own instructions,
 language, provider and model, searching only that agent's collection.
 """
 import hashlib
+import json
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -21,7 +22,14 @@ public_router = APIRouter(prefix="/api/public", tags=["public-chat"])
 def _agent_config(agent: Agent) -> dict:
     return {"name": agent.name, "instructions": agent.instructions or "", "language": agent.language,
             "provider": agent.provider, "model": agent.model, "temperature": agent.temperature,
-            "greeting": agent.greeting or ""}
+            "greeting": agent.greeting or "", "mode": agent.mode or "rag",
+            "show_citations": bool(agent.show_citations)}
+
+
+def _require_active(agent: Agent):
+    if not agent.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="This chatbot is deactivated. Please activate it before chatting.")
 
 
 def _check_message_limit(sub: Subscription):
@@ -43,6 +51,7 @@ async def _run_chat(db: Session, agent: Agent, workspace_id: str, sub: Subscript
                     message: str, conversation_id, channel: str) -> TenantChatResponse:
     if not message or not message.strip():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Message cannot be empty.")
+    _require_active(agent)
     _check_message_limit(sub)
     conversation = None
     if conversation_id:
@@ -67,12 +76,14 @@ async def _run_chat(db: Session, agent: Agent, workspace_id: str, sub: Subscript
     result = await rag_agent_service.answer_question(
         question=message.strip(), history=history, agent_config=_agent_config(agent), agent_id=agent.id)
 
+    sources = result.sources if agent.show_citations else []
+    stored = json.dumps([s.model_dump(mode="json") for s in sources]) if sources else "[]"
     db.add(Message(conversation_id=conversation.id, role="assistant", content=result.response,
-                   sources="[]"))
+                   sources=stored))
     db.commit()
     _record_usage(db, workspace_id, agent.id, sub)
     return TenantChatResponse(conversation_id=conversation.id, response=result.response,
-                              sources=[], agent_steps=[])
+                              sources=sources, agent_steps=[])
 
 
 @tenant_router.post("/{workspace_id}/agents/{agent_id}/chat", response_model=TenantChatResponse)

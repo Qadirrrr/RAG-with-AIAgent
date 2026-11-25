@@ -39,13 +39,13 @@ export default function Analytics() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-extrabold text-slate-900">Analytics</h2>
-        <p className="text-sm text-slate-500 mt-1">Usage and performance for this workspace.</p>
+        <p className="text-sm text-slate-500 mt-1">Usage and performance for this project.</p>
       </div>
       <ErrorBox message={error} onRetry={load} />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard title="Total Messages" value={totalMessages} icon={MessageSquare} description="Messages answered by agents" color="teal" />
+        <StatCard title="Total Messages" value={totalMessages} icon={MessageSquare} description="Messages answered by chatbots" color="teal" />
         <StatCard title="Conversations" value={totalConvs} icon={TrendingUp} description="Chat sessions started" color="blue" />
-        <StatCard title="Agents" value={totalAgents} icon={Bot} description="Active AI agents" color="emerald" />
+        <StatCard title="Chatbots" value={totalAgents} icon={Bot} description="Chatbots in this project" color="emerald" />
         <StatCard title="Documents" value={totalDocs} icon={FileText} description="Indexed knowledge files" color="amber" />
       </div>
 
@@ -80,14 +80,14 @@ export default function Analytics() {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100"><h3 className="font-semibold text-slate-800">Usage per agent</h3></div>
+        <div className="px-6 py-4 border-b border-slate-100"><h3 className="font-semibold text-slate-800">Usage per chatbot</h3></div>
         {perAgent.length === 0 ? (
-          <p className="p-6 text-sm text-slate-500">No per-agent breakdown returned by the API yet.</p>
+          <p className="p-6 text-sm text-slate-500">No per-chatbot breakdown returned by the API yet.</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-slate-500 border-b border-slate-100">
-                <th className="px-6 py-3 font-semibold">Agent</th>
+                <th className="px-6 py-3 font-semibold">Chatbot</th>
                 <th className="px-6 py-3 font-semibold">Messages</th>
                 <th className="px-6 py-3 font-semibold">Conversations</th>
                 <th className="px-6 py-3 font-semibold">Documents</th>

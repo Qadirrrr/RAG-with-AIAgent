@@ -73,6 +73,7 @@ export default function Playground() {
       setMessages((prev) => [...prev, {
         role: 'assistant',
         content: data.response || data.answer || 'No response returned.',
+        sources: data.sources || [],
         timestamp: new Date().toISOString(),
       }]);
       load();
@@ -83,7 +84,7 @@ export default function Playground() {
   };
 
   if (loading) return <Spinner label="Loading playground..." />;
-  if (!selectedId) return <EmptyState icon={Bot} title="No workspace selected" text="Select a workspace from the sidebar to test an agent." />;
+  if (!selectedId) return <EmptyState icon={Bot} title="No project selected" text="Select a project from the sidebar to test a chatbot." />;
 
   return (
     <div className="space-y-4">

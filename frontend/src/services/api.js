@@ -55,6 +55,7 @@ export const FALLBACK_PLANS = [
 export const MODEL_OPTIONS = {
   gemini: ['gemini-3.5-flash-lite'],
   openai: ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'],
+  ollama: ['qwen2.5:7b', 'qwen2.5:3b', 'qwen2.5:14b', 'qwen3:8b'],
 };
 
 export const apiService = {
@@ -89,6 +90,7 @@ export const apiService = {
   createAgent: async (ws, payload) => (await apiClient.post(`/api/workspaces/${ws}/agents`, payload)).data,
   updateAgent: async (ws, id, payload) => (await apiClient.patch(`/api/workspaces/${ws}/agents/${id}`, payload)).data,
   deleteAgent: async (ws, id) => (await apiClient.delete(`/api/workspaces/${ws}/agents/${id}`)).data,
+  toggleAgentActive: async (ws, id) => (await apiClient.post(`/api/workspaces/${ws}/agents/${id}/toggle-active`)).data,
   getAgent: async (ws, id) => (await apiClient.get(`/api/workspaces/${ws}/agents/${id}`)).data,
 
   // Agent documents and knowledge
@@ -102,7 +104,7 @@ export const apiService = {
     });
     return res.data;
   },
-  addAgentDocumentUrl: async (ws, agentId, url) => (await apiClient.post(`/api/workspaces/${ws}/agents/${agentId}/documents/url`, { url })).data,
+  addAgentDocumentUrl: async (ws, agentId, url, type) => (await apiClient.post(`/api/workspaces/${ws}/agents/${agentId}/documents/url`, { url, type: type || 'url' })).data,
   deleteAgentDocument: async (ws, agentId, docId) => (await apiClient.delete(`/api/workspaces/${ws}/agents/${agentId}/documents/${docId}`)).data,
 
   // Agent chat and conversations

@@ -19,9 +19,10 @@ from app.services.tenant_vector_store import tenant_vector_store
 
 router = APIRouter(prefix="/api/workspaces", tags=["knowledge"])
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt", ".md"}
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt", ".md", ".csv"}
 MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_URL_CHARS = 200_000
+MAX_SITEMAP_PAGES = 20
 
 
 def _doc_out(d: Document) -> TenantDocumentOut:
@@ -81,7 +82,7 @@ async def upload_document(workspace_id: str, agent_id: str, file: UploadFile = F
     ext = os.path.splitext(filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=f"Unsupported file type '{ext}'. Allowed types: PDF, DOCX, TXT, MD.")
+                            detail=f"Unsupported file type '{ext}'. Allowed types: PDF, DOCX, TXT, MD, CSV.")
     content = await file.read()
     if len(content) > MAX_FILE_BYTES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File is too large. Maximum size is 10 MB.")
@@ -114,6 +115,36 @@ async def upload_document(workspace_id: str, agent_id: str, file: UploadFile = F
     return _doc_out(doc)
 
 
+def _fetch_text(url: str) -> str:
+    """Fetch a web page and return its readable text, capped per page."""
+    resp = httpx.get(url, timeout=20, follow_redirects=True,
+                     headers={"User-Agent": "RAG-AI-Agent/1.0"})
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "html.parser")
+    for tag in soup(["script", "style", "nav", "header", "footer", "noscript"]):
+        tag.decompose()
+    text = " ".join(soup.get_text(separator=" ").split())
+    return text[:MAX_URL_CHARS]
+
+
+def _ingest_page(agent, workspace_id: str, page_url: str, text: str, db: Session) -> Document:
+    filename = page_url.replace("https://", "").replace("http://", "").rstrip("/") or "website"
+    doc = Document(agent_id=agent.id, workspace_id=workspace_id, filename=filename, file_type="URL",
+                   file_size=len(text.encode("utf-8")), status="processing", chunks_count=0,
+                   source_type="url", source_url=page_url)
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+    chunks = document_loader_service.split_text(text, doc.id, filename, {"source_url": page_url})
+    _embed_chunks(agent, workspace_id, doc, chunks, db)
+    return doc
+
+
+def _parse_sitemap_urls(xml_text: str) -> list:
+    soup = BeautifulSoup(xml_text, "xml")
+    return [loc.get_text(strip=True) for loc in soup.find_all("loc") if loc.get_text(strip=True)]
+
+
 @router.post("/{workspace_id}/agents/{agent_id}/documents/url", response_model=TenantDocumentOut)
 def ingest_url(workspace_id: str, agent_id: str, payload: UrlIngestRequest,
                user=Depends(get_current_user), db: Session = Depends(get_db)):
@@ -122,29 +153,43 @@ def ingest_url(workspace_id: str, agent_id: str, payload: UrlIngestRequest,
     url = payload.url.strip()
     if not (url.startswith("http://") or url.startswith("https://")):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="URL must start with http:// or https://")
+
+    is_sitemap = (payload.type or "").lower() == "sitemap" or url.rstrip("/").endswith("sitemap.xml")
+    if is_sitemap:
+        try:
+            resp = httpx.get(url, timeout=20, follow_redirects=True,
+                             headers={"User-Agent": "RAG-AI-Agent/1.0"})
+            resp.raise_for_status()
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Could not fetch sitemap: {e}")
+        page_urls = _parse_sitemap_urls(resp.text)[:MAX_SITEMAP_PAGES]
+        if not page_urls:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No page URLs found in that sitemap.")
+        first_doc = None
+        ingested = 0
+        for page_url in page_urls:
+            try:
+                text = _fetch_text(page_url)
+            except Exception:
+                continue
+            if len(text) < 50:
+                continue
+            doc = _ingest_page(agent, workspace_id, page_url, text, db)
+            if first_doc is None:
+                first_doc = doc
+            ingested += 1
+        if first_doc is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="None of the sitemap pages had readable text.")
+        return _doc_out(first_doc)
+
     try:
-        resp = httpx.get(url, timeout=20, follow_redirects=True,
-                         headers={"User-Agent": "RAG-AI-Agent/1.0"})
-        resp.raise_for_status()
+        text = _fetch_text(url)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Could not fetch URL: {e}")
-    soup = BeautifulSoup(resp.text, "html.parser")
-    for tag in soup(["script", "style", "nav", "header", "footer", "noscript"]):
-        tag.decompose()
-    text = " ".join(soup.get_text(separator=" ").split())
-    text = text[:MAX_URL_CHARS]
     if len(text) < 50:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No readable text found on that page.")
-
-    filename = url.replace("https://", "").replace("http://", "").rstrip("/") or "website"
-    doc = Document(agent_id=agent.id, workspace_id=workspace_id, filename=filename, file_type="URL",
-                   file_size=len(text.encode("utf-8")), status="processing", chunks_count=0,
-                   source_type="url", source_url=url)
-    db.add(doc)
-    db.commit()
-    db.refresh(doc)
-    chunks = document_loader_service.split_text(text, doc.id, filename, {"source_url": url})
-    _embed_chunks(agent, workspace_id, doc, chunks, db)
+    doc = _ingest_page(agent, workspace_id, url, text, db)
     return _doc_out(doc)
 
 

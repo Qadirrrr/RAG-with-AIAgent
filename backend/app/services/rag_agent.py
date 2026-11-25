@@ -6,13 +6,25 @@ from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from app.config import settings
 from app.services.vector_store import vector_store_service
 from app.services.storage import storage_service
-from app.models.schemas import ChatResponse
+from app.models.schemas import ChatResponse, DocumentSource
 
 # Provider -> allowed chat models (validated again in routes/agents.py).
+# For "ollama" the set holds known-good defaults, but any qwen* model
+# string is also accepted (see is_model_allowed), because the exact tag
+# installed on the self-hosted server is chosen by the operator.
 ALLOWED_MODELS = {
     "gemini": {"gemini-3.5-flash-lite"},
     "openai": {"gpt-4o-mini", "gpt-4o"},
+    "ollama": {"qwen2.5:7b", "qwen2.5:3b", "qwen2.5:14b", "qwen2.5:32b", "qwen3:8b"},
 }
+
+
+def is_model_allowed(provider: str, model: str) -> bool:
+    if provider not in ALLOWED_MODELS:
+        return False
+    if provider == "ollama":
+        return bool(model) and (model in ALLOWED_MODELS["ollama"] or model.startswith("qwen"))
+    return model in ALLOWED_MODELS[provider]
 
 
 class RAGAgentService:
@@ -46,6 +58,21 @@ class RAGAgentService:
                 openai_api_key=key,
                 max_retries=1
             )
+        elif provider == "ollama":
+            # Self-hosted Ollama needs no cloud API key. Ollama exposes an
+            # OpenAI-compatible endpoint at <base>/v1, so ChatOpenAI is
+            # used with a dummy key instead of requiring langchain-ollama.
+            chosen_model = model if is_model_allowed("ollama", model or "") else settings.OLLAMA_MODEL
+            try:
+                return ChatOpenAI(
+                    model=chosen_model,
+                    temperature=temperature,
+                    openai_api_key="ollama",
+                    base_url=settings.OLLAMA_BASE_URL.rstrip("/") + "/v1",
+                    max_retries=1
+                )
+            except Exception:
+                return None
         return None
 
     async def answer_question(self, question: str, history: List[Dict[str, str]] = None,
@@ -67,12 +94,20 @@ class RAGAgentService:
         instructions = agent_config.get("instructions") or ""
         agent_name = agent_config.get("name") or "AI Assistant"
 
+        show_citations = bool(agent_config.get("show_citations"))
+        mode = agent_config.get("mode") or "rag"
+
         llm = self._get_llm(provider=provider, model=model, temperature=temperature)
         if not llm:
+            if provider == "ollama":
+                msg = ("The self-hosted AI service (Ollama) is not available. "
+                       "Please make sure Ollama is running on the server and try again.")
+            else:
+                msg = "AI API Key is not configured. Please add your `GEMINI_API_KEY` to `backend/.env`."
             return ChatResponse(
-                response="AI API Key is not configured. Please add your `GEMINI_API_KEY` to `backend/.env`.",
+                response=msg,
                 sources=[],
-                agent_steps=["API Key check failed."]
+                agent_steps=["Provider check failed."]
             )
 
         agent_steps = []
@@ -90,15 +125,32 @@ class RAGAgentService:
             agent_steps.append("Knowledge search warning.")
 
         context_parts = []
+        sources: List[DocumentSource] = []
         if docs:
+            seen_names = set()
             for doc in docs:
                 content = doc.page_content.strip()
                 if content:
                     context_parts.append(content)
+                if show_citations:
+                    name = (doc.metadata or {}).get("document_name") or "Document"
+                    if name not in seen_names:
+                        seen_names.add(name)
+                        sources.append(DocumentSource(
+                            document_id=str((doc.metadata or {}).get("document_id") or ""),
+                            document_name=name,
+                            page=(doc.metadata or {}).get("page"),
+                            snippet=content[:200],
+                        ))
 
         # 2. Build prompt from the agent's own instructions and language.
         lang_note = f"Answer in {language}." if language else ""
         custom = f"\nAgent instructions: {instructions}" if instructions else ""
+        if mode == "agent":
+            # RAG + Agent mode: allow careful multi-step reasoning over the
+            # retrieved knowledge. No external tools are wired up yet, so the
+            # model still answers from knowledge only.
+            custom += "\nYou may reason step by step over the knowledge before answering."
         if context_parts:
             context_text = "\n\n".join(context_parts)
             system_prompt = (
@@ -160,7 +212,7 @@ class RAGAgentService:
 
             return ChatResponse(
                 response=output_text.strip(),
-                sources=[],
+                sources=sources if show_citations else [],
                 agent_steps=[]
             )
 

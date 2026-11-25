@@ -9,7 +9,33 @@ except ImportError:
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.documents import Document
+from langchain_core.embeddings import Embeddings
 from app.config import settings
+
+
+class OllamaBgeEmbeddings(Embeddings):
+    """BGE embeddings served by a self-hosted Ollama instance.
+
+    Calls Ollama's /api/embeddings endpoint with the configured BGE
+    model (default bge-m3). No cloud API key is involved.
+    """
+
+    def __init__(self, base_url: str, model: str):
+        self.base_url = base_url.rstrip("/")
+        self.model = model
+
+    def _embed(self, text: str) -> List[float]:
+        import httpx
+        resp = httpx.post(f"{self.base_url}/api/embeddings",
+                          json={"model": self.model, "prompt": text}, timeout=60)
+        resp.raise_for_status()
+        return resp.json()["embedding"]
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        return [self._embed(t) for t in texts]
+
+    def embed_query(self, text: str) -> List[float]:
+        return self._embed(text)
 
 class VectorStoreService:
     def __init__(self):
@@ -22,8 +48,22 @@ class VectorStoreService:
         self._cached_key: Optional[str] = None
 
     def get_embeddings(self) -> Optional[Any]:
+        # EMBEDDING_PROVIDER=bge selects self-hosted BGE via Ollama and
+        # takes priority over the cloud providers. The default ("gemini")
+        # keeps the existing behaviour so current collections keep working.
+        if (settings.EMBEDDING_PROVIDER or "").lower() == "bge":
+            if self._embeddings is None or self._cached_provider != "bge":
+                self._embeddings = OllamaBgeEmbeddings(
+                    base_url=settings.OLLAMA_BASE_URL,
+                    model=settings.BGE_EMBEDDING_MODEL,
+                )
+                self._cached_provider = "bge"
+                self._cached_key = None
+                self._vector_store = None
+            return self._embeddings
+
         provider = settings.get_active_provider()
-        
+
         if provider == "gemini":
             key = settings.get_gemini_api_key()
             if self._embeddings is None or self._cached_provider != "gemini" or self._cached_key != key:

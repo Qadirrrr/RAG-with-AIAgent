@@ -1,4 +1,5 @@
 """Workspace analytics and conversation history."""
+import json
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
@@ -80,7 +81,13 @@ def get_conversation(workspace_id: str, conversation_id: str, user=Depends(get_c
     msgs = db.query(Message).filter(Message.conversation_id == conv.id).order_by(Message.created_at.asc()).all()
     out_msgs = []
     for m in msgs:
-        out_msgs.append(MessageOut(id=m.id, role=m.role, content=m.content, sources=[], created_at=m.created_at))
+        stored_sources = []
+        if m.sources and m.sources != "[]":
+            try:
+                stored_sources = json.loads(m.sources)
+            except Exception:
+                stored_sources = []
+        out_msgs.append(MessageOut(id=m.id, role=m.role, content=m.content, sources=stored_sources, created_at=m.created_at))
     return ConversationOut(id=conv.id, agent_id=conv.agent_id, workspace_id=conv.workspace_id, title=conv.title,
                            channel=conv.channel, created_at=conv.created_at, messages=out_msgs)
 

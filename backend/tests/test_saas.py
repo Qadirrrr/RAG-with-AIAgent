@@ -179,6 +179,88 @@ def test_admin_endpoints_require_super_admin(client):
     assert "totals" in r.json()
 
 
+def test_cross_project_agent_access_returns_404(client):
+    """Chatbot A created in project 1 must not be readable or chattable under project 2."""
+    token, _ = _auth(client, "ivan@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    ws1 = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+    r = client.post("/api/workspaces", headers=h, json={"name": "Project Two"})
+    assert r.status_code == 200, r.text
+    ws2 = r.json()["id"]
+
+    agent = client.post(f"/api/workspaces/{ws1}/agents", headers=h, json={"name": "Project One Bot"}).json()
+
+    r = client.get(f"/api/workspaces/{ws2}/agents/{agent['id']}", headers=h)
+    assert r.status_code == 404, r.text
+    r = client.post(f"/api/workspaces/{ws2}/agents/{agent['id']}/chat", headers=h, json={"message": "Hi"})
+    assert r.status_code == 404, r.text
+    r = client.get(f"/api/workspaces/{ws2}/agents/{agent['id']}/documents", headers=h)
+    assert r.status_code == 404, r.text
+
+
+def test_deactivated_chatbot_public_chat_returns_403(client):
+    token, _ = _auth(client, "judy@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    ws_id = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+    agent = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={"name": "Toggle Bot"}).json()
+    assert agent["is_active"] is True
+    raw_key = client.post(f"/api/workspaces/{ws_id}/agents/{agent['id']}/api-keys",
+                          headers=h, json={"name": "Website"}).json()["api_key"]
+
+    r = client.post(f"/api/workspaces/{ws_id}/agents/{agent['id']}/toggle-active", headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json()["is_active"] is False
+
+    r = client.post("/api/public/chat", headers={"X-Agent-Key": raw_key},
+                    json={"agent_id": agent["id"], "message": "Hello"})
+    assert r.status_code == 403, r.text
+    assert "deactivated" in r.json()["detail"]
+
+    # Playground chat is refused too.
+    r = client.post(f"/api/workspaces/{ws_id}/agents/{agent['id']}/chat", headers=h,
+                    json={"message": "Hello"})
+    assert r.status_code == 403, r.text
+
+
+def test_csv_upload_is_ingested(client):
+    token, _ = _auth(client, "karl@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    ws_id = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+    agent = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={"name": "CSV Bot"}).json()
+    csv_bytes = b"plan,price\nStarter,19\nPro,49\n"
+    r = client.post(f"/api/workspaces/{ws_id}/agents/{agent['id']}/documents", headers=h,
+                    files={"file": ("plans.csv", csv_bytes, "text/csv")})
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "processed"
+    assert r.json()["chunks_count"] >= 1
+
+
+def test_ollama_agent_creation_without_cloud_key(client):
+    token, _ = _auth(client, "lena@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    ws_id = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+    r = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={
+        "name": "Local Bot", "provider": "ollama", "model": "qwen2.5:7b",
+        "description": "Self-hosted bot", "mode": "agent", "show_citations": True})
+    assert r.status_code == 200, r.text
+    agent = r.json()
+    assert agent["provider"] == "ollama"
+    assert agent["description"] == "Self-hosted bot"
+    assert agent["mode"] == "agent"
+    assert agent["show_citations"] is True
+
+    # Any qwen tag is accepted for ollama.
+    r = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={
+        "name": "Local Bot 2", "provider": "ollama", "model": "qwen2.5:1.5b"})
+    assert r.status_code in (200, 403), r.text  # 403 only if the plan agent limit is hit
+
+    # Chat fails gracefully (LLM patched to None in this fixture), never a 500.
+    r = client.post(f"/api/workspaces/{ws_id}/agents/{agent['id']}/chat", headers=h,
+                    json={"message": "Hello"})
+    assert r.status_code == 200, r.text
+    assert "Ollama" in r.json()["response"]
+
+
 def test_new_workspace_stats_are_zero_and_isolated(client):
     """A fresh workspace must show only its own data: zeros, no other workspace's docs."""
     token, _ = _auth(client, "heidi@example.com")

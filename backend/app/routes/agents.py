@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.db import Agent, ensure_free_subscription, get_db
 from app.deps import get_current_user, get_workspace_or_404
 from app.models.schemas import AgentCreate, AgentOut, AgentUpdate
-from app.services.rag_agent import ALLOWED_MODELS
+from app.services.rag_agent import ALLOWED_MODELS, is_model_allowed
 
 router = APIRouter(prefix="/api/workspaces", tags=["agents"])
 
@@ -13,17 +13,26 @@ router = APIRouter(prefix="/api/workspaces", tags=["agents"])
 def _agent_out(a: Agent) -> AgentOut:
     return AgentOut(id=a.id, workspace_id=a.workspace_id, name=a.name, instructions=a.instructions or "",
                     language=a.language, provider=a.provider, model=a.model,
-                    temperature=a.temperature, greeting=a.greeting or "", created_at=a.created_at)
+                    temperature=a.temperature, greeting=a.greeting or "",
+                    description=a.description or "", is_active=bool(a.is_active),
+                    mode=a.mode or "rag", show_citations=bool(a.show_citations),
+                    created_at=a.created_at)
 
 
 def _validate_provider_model(provider: str, model: str):
     if provider not in ALLOWED_MODELS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=f"Unknown provider '{provider}'. Use 'gemini' or 'openai'.")
-    if model not in ALLOWED_MODELS[provider]:
+                            detail=f"Unknown provider '{provider}'. Use 'gemini', 'openai' or 'ollama'.")
+    if not is_model_allowed(provider, model):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail=f"Model '{model}' is not available for provider '{provider}'. "
                                    f"Allowed: {', '.join(sorted(ALLOWED_MODELS[provider]))}.")
+
+
+def _validate_mode(mode: str):
+    if mode not in ("rag", "agent"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Mode must be 'rag' (strict RAG) or 'agent' (RAG + Agent).")
 
 
 def _get_agent_or_404(agent_id: str, workspace_id: str, db: Session) -> Agent:
@@ -37,6 +46,7 @@ def _get_agent_or_404(agent_id: str, workspace_id: str, db: Session) -> Agent:
 def create_agent(workspace_id: str, payload: AgentCreate, user=Depends(get_current_user), db: Session = Depends(get_db)):
     ws = get_workspace_or_404(workspace_id, user, db)
     _validate_provider_model(payload.provider, payload.model)
+    _validate_mode(payload.mode or "rag")
     sub = ensure_free_subscription(db, ws.id)
     count = db.query(Agent).filter(Agent.workspace_id == ws.id).count()
     if count >= sub.agent_limit:
@@ -44,7 +54,9 @@ def create_agent(workspace_id: str, payload: AgentCreate, user=Depends(get_curre
                             detail=f"Your {sub.plan} plan allows {sub.agent_limit} agent(s). Upgrade your plan to create more agents.")
     agent = Agent(workspace_id=ws.id, name=payload.name.strip(), instructions=payload.instructions or "",
                   language=payload.language or "en", provider=payload.provider, model=payload.model,
-                  temperature=payload.temperature, greeting=payload.greeting or "")
+                  temperature=payload.temperature, greeting=payload.greeting or "",
+                  description=payload.description or "", is_active=bool(payload.is_active),
+                  mode=payload.mode or "rag", show_citations=bool(payload.show_citations))
     db.add(agent)
     db.commit()
     db.refresh(agent)
@@ -70,10 +82,23 @@ def update_agent(workspace_id: str, agent_id: str, payload: AgentUpdate, user=De
     provider = payload.provider if payload.provider is not None else agent.provider
     model = payload.model if payload.model is not None else agent.model
     _validate_provider_model(provider, model)
-    for field in ("name", "instructions", "language", "provider", "model", "temperature", "greeting"):
+    if payload.mode is not None:
+        _validate_mode(payload.mode)
+    for field in ("name", "instructions", "language", "provider", "model", "temperature", "greeting",
+                  "description", "is_active", "mode", "show_citations"):
         value = getattr(payload, field)
         if value is not None:
             setattr(agent, field, value.strip() if isinstance(value, str) else value)
+    db.commit()
+    db.refresh(agent)
+    return _agent_out(agent)
+
+
+@router.post("/{workspace_id}/agents/{agent_id}/toggle-active", response_model=AgentOut)
+def toggle_agent_active(workspace_id: str, agent_id: str, user=Depends(get_current_user), db: Session = Depends(get_db)):
+    ws = get_workspace_or_404(workspace_id, user, db)
+    agent = _get_agent_or_404(agent_id, ws.id, db)
+    agent.is_active = not bool(agent.is_active)
     db.commit()
     db.refresh(agent)
     return _agent_out(agent)

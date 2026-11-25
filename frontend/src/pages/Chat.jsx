@@ -70,7 +70,7 @@ export default function Chat() {
 
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
-      const errorDetail = err.response?.data?.detail || err.message || 'Error communicating with AI Agent.';
+      const errorDetail = err.response?.data?.detail || err.message || 'Error communicating with the chatbot.';
       setError(errorDetail);
       
       const errorMsg = {

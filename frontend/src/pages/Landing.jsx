@@ -4,12 +4,12 @@ import { Bot, FileText, MessageSquare, BarChart3, Plug, ShieldCheck, Check, Arro
 import { FALLBACK_PLANS } from '../services/api';
 
 const features = [
-  { icon: Bot, title: 'Multiple AI agents', text: 'Create a separate agent for support, sales, onboarding or internal knowledge, each with its own instructions and personality.' },
+  { icon: Bot, title: 'Multiple chatbots', text: 'Create a separate chatbot for each project: support, sales, onboarding or internal knowledge, each with its own instructions and personality.' },
   { icon: FileText, title: 'RAG knowledge base', text: 'Upload PDF, DOCX and TXT files or add website URLs. Documents are chunked, embedded and stored for accurate, professional answers.' },
   { icon: MessageSquare, title: 'Playground testing', text: 'Test every agent in a live chat playground before you publish it, and review real conversations from your customers.' },
   { icon: Plug, title: 'Website widget and API', text: 'Embed a chat widget on any website with one script tag, or call the REST API from your own app with a secure API key.' },
-  { icon: BarChart3, title: 'Analytics and usage', text: 'Track messages, agents, documents and usage against your plan limits, and see which agents your visitors use most.' },
-  { icon: ShieldCheck, title: 'Secure multi-tenant data', text: 'Every workspace has a separate knowledge base. Customers can only access their own agents, documents and conversations.' },
+  { icon: BarChart3, title: 'Analytics and usage', text: 'Track messages, chatbots, documents and usage against your plan limits, and see which chatbots your visitors use most.' },
+  { icon: ShieldCheck, title: 'Secure multi-tenant data', text: 'Every project has a separate knowledge base. Customers can only access their own chatbots, documents and conversations.' },
 ];
 
 export default function Landing() {
@@ -35,7 +35,7 @@ export default function Landing() {
             Powered by LangChain, ChromaDB, OpenAI and Google Gemini
           </span>
           <h1 className="mt-6 text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-tight">
-            Build an AI agent that knows your business
+            Build a chatbot that knows your business
           </h1>
           <p className="mt-5 text-base sm:text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">
             Sign up, upload your documents, and launch a smart support agent on your website in minutes. No programming knowledge needed.
@@ -70,7 +70,7 @@ export default function Landing() {
         <section className="bg-white border-y border-slate-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-8 py-16">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 text-center">Simple pricing that grows with you</h2>
-            <p className="text-sm text-slate-500 text-center mt-2">Start free. Upgrade when your agents get busy.</p>
+            <p className="text-sm text-slate-500 text-center mt-2">Start free. Upgrade when your chatbots get busy.</p>
             <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               {FALLBACK_PLANS.map((plan) => (
                 <div key={plan.id} className={`rounded-2xl border p-6 ${plan.id === 'pro' ? 'border-teal-600 ring-2 ring-teal-100 bg-teal-50/40' : 'border-slate-200 bg-white'}`}>
@@ -102,7 +102,7 @@ export default function Landing() {
       <footer className="border-t border-slate-200 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
           <span>RAG Agent SaaS Platform</span>
-          <span>Secure multi-tenant AI agents with real RAG retrieval.</span>
+          <span>Secure multi-tenant chatbots with real RAG retrieval.</span>
         </div>
       </footer>
     </div>

@@ -18,7 +18,15 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
-    
+
+    # Self-hosted Ollama Configuration (no cloud API key needed)
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "qwen2.5:7b"
+    # Embedding provider: "gemini" (default, keeps existing collections
+    # working), "openai", or "bge" (self-hosted BGE via Ollama, model bge-m3)
+    EMBEDDING_PROVIDER: str = "gemini"
+    BGE_EMBEDDING_MODEL: str = "bge-m3"
+
     CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
     UPLOAD_DIRECTORY: str = "./data/uploads"
 
@@ -74,6 +82,8 @@ class Settings(BaseSettings):
         return self.GEMINI_MODEL
 
     def get_active_embedding_model(self) -> str:
+        if (self.EMBEDDING_PROVIDER or "").lower() == "bge":
+            return self.BGE_EMBEDDING_MODEL
         provider = self.get_active_provider()
         if provider == "gemini":
             return self.GEMINI_EMBEDDING_MODEL

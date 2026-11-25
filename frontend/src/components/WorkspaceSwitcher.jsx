@@ -22,7 +22,7 @@ export default function WorkspaceSwitcher() {
       setShowCreate(false);
       setOpen(false);
     } catch (err) {
-      setError(err?.response?.data?.detail || err.message || 'Could not create workspace.');
+      setError(err?.response?.data?.detail || err.message || 'Could not create project.');
     } finally { setSaving(false); }
   };
 
@@ -36,9 +36,9 @@ export default function WorkspaceSwitcher() {
           <Building2 className="w-4 h-4" />
         </span>
         <span className="flex-1 min-w-0">
-          <span className="block text-[11px] text-white/60 font-medium">Workspace</span>
+          <span className="block text-[11px] text-white/60 font-medium">Project</span>
           <span className="block text-[13px] font-semibold text-white truncate">
-            {selected ? selected.name : loading ? 'Loading...' : 'No workspace yet'}
+            {selected ? selected.name : loading ? 'Loading...' : 'No project yet'}
           </span>
         </span>
         <ChevronDown className="w-4 h-4 text-white/60 shrink-0" />
@@ -60,21 +60,21 @@ export default function WorkspaceSwitcher() {
             onClick={() => { setShowCreate(true); setOpen(false); }}
             className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] font-semibold text-teal-600 hover:bg-teal-50 border-t border-slate-100"
           >
-            <Plus className="w-4 h-4" /> New workspace
+            <Plus className="w-4 h-4" /> New project
           </button>
         </div>
       )}
 
       {showCreate && (
-        <Modal title="Create workspace" onClose={() => setShowCreate(false)}>
+        <Modal title="Create project" onClose={() => setShowCreate(false)}>
           <form onSubmit={create} className="space-y-4">
             <div>
-              <label className={labelCls}>Workspace name</label>
+              <label className={labelCls}>Project name</label>
               <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="My company" autoFocus />
             </div>
             {error && <p className="text-sm text-rose-600">{error}</p>}
             <button type="submit" disabled={saving} className={btnPrimary + ' w-full'}>
-              {saving ? 'Creating...' : 'Create workspace'}
+              {saving ? 'Creating...' : 'Create project'}
             </button>
           </form>
         </Modal>
