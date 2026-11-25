@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, Bot, MessageSquare, Files, History, BarChart3,
+  LayoutDashboard, Bot, Files, BarChart3,
   CreditCard, Plug, ShieldCheck, Settings, X, LogOut,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -10,12 +10,10 @@ import WorkspaceSwitcher from './WorkspaceSwitcher';
 const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
   { name: 'Chatbots', path: '/agents', icon: Bot },
-  { name: 'Conversations', path: '/conversations', icon: History },
   { name: 'Analytics', path: '/analytics', icon: BarChart3 },
   { name: 'Billing', path: '/billing', icon: CreditCard },
   { name: 'Integrations', path: '/integrations', icon: Plug },
   { name: 'Documents', path: '/documents', icon: Files },
-  { name: 'AI Agent Chat', path: '/chat', icon: MessageSquare },
   { name: 'Settings', path: '/settings', icon: Settings },
 ];
 

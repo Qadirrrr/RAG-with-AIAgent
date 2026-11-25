@@ -1,33 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  FileText, 
-  CheckCircle2, 
-  HelpCircle, 
-  Layers, 
-  ArrowRight, 
-  Upload, 
-  MessageSquare, 
-  Activity, 
-  Clock, 
-  AlertCircle 
+import {
+  Bot,
+  FileText,
+  HelpCircle,
+  CreditCard,
+  Plus,
+  FlaskConical,
+  Files,
+  Plug,
+  AlertCircle,
 } from 'lucide-react';
 import StatCard from '../components/StatCard';
 import apiService from '../services/api';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { useAuth } from '../context/AuthContext';
 
 const EMPTY_STATS = {
   total_documents: 0,
-  processed_documents: 0,
-  total_chunks: 0,
   total_questions_asked: 0,
-  recent_activity: [],
+  agents_count: 0,
 };
 
+const STEPS = [
+  { n: 1, title: 'Create a chatbot', text: 'Make a chatbot for your website and set its name, tone and instructions.' },
+  { n: 2, title: 'Add your documents or website', text: 'Upload your files or add your website pages to its knowledge base.' },
+  { n: 3, title: 'Add it to your website', text: 'Paste the widget code on your website and it answers only from your data.' },
+];
+
 export default function Dashboard() {
-  const { selectedId } = useWorkspace();
+  const { selectedId, selected } = useWorkspace();
+  const { user } = useAuth();
   const [stats, setStats] = useState(EMPTY_STATS);
-  const [health, setHealth] = useState(null);
+  const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -38,72 +43,60 @@ export default function Dashboard() {
   const fetchDashboardData = async () => {
     if (!selectedId) {
       setStats(EMPTY_STATS);
+      setAgents([]);
       setLoading(false);
       return;
     }
     try {
       setLoading(true);
       setStats(EMPTY_STATS);
-      const [statsData, healthData] = await Promise.allSettled([
+      setAgents([]);
+      const [statsData, agentsData] = await Promise.allSettled([
         apiService.getWorkspaceStats(selectedId),
-        apiService.getHealth()
+        apiService.getAgents(selectedId),
       ]);
 
       if (statsData.status === 'fulfilled') {
         setStats({ ...EMPTY_STATS, ...statsData.value });
       }
-      if (healthData.status === 'fulfilled') {
-        setHealth(healthData.value);
+      if (agentsData.status === 'fulfilled') {
+        setAgents(agentsData.value || []);
       }
       setError(null);
     } catch (err) {
-      setError('Could not load dashboard metrics. Check if backend is running.');
+      setError('Could not load your dashboard. Check if backend is running.');
     } finally {
       setLoading(false);
     }
   };
 
-  const formatActivityTime = (isoString) => {
-    if (!isoString) return '';
-    try {
-      const date = new Date(isoString);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch {
-      return '';
-    }
-  };
+  const planId = selected?.plan || selected?.subscription?.plan || selected?.plan_id || 'free';
+  const planLabel = String(planId).charAt(0).toUpperCase() + String(planId).slice(1);
+  const firstName = (user?.name || '').split(' ')[0];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
-      {/* Welcome Banner */}
+      {/* Header: greeting, current project, New Chatbot */}
       <div className="bg-[#0F2A3D] rounded-2xl p-6 sm:p-8 text-white shadow-sm">
-        <div className="max-w-2xl">
-          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-white mb-3">
-            RAG Knowledge System Active
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-            Intelligent Document Agent
-          </h2>
-          <p className="mt-2 text-slate-300 text-sm sm:text-base leading-relaxed">
-            Upload your documents and website pages, then ask questions and get direct, professional answers.
-          </p>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              to="/documents"
-              className="inline-flex items-center space-x-2 bg-white text-[#0F2A3D] hover:bg-slate-100 font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors shadow-sm"
-            >
-              <Upload className="w-4 h-4" />
-              <span>Upload Documents</span>
-            </Link>
-            <Link
-              to="/chat"
-              className="inline-flex items-center space-x-2 bg-teal-700 hover:bg-teal-800 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors shadow-sm"
-            >
-              <MessageSquare className="w-4 h-4" />
-              <span>Start Chatbot Chat</span>
-            </Link>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-2xl">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+              {firstName ? `Welcome back, ${firstName}` : 'Welcome back'}
+            </h2>
+            <p className="mt-2 text-slate-300 text-sm sm:text-base leading-relaxed">
+              {selected?.name ? (
+                <>Project: <span className="font-semibold text-white">{selected.name}</span>. </>
+              ) : null}
+              Create a chatbot for your website, add your own documents, and it answers only from your data.
+            </p>
           </div>
+          <Link
+            to="/agents?new=1"
+            className="inline-flex items-center space-x-2 bg-teal-700 hover:bg-teal-800 text-white font-semibold px-5 py-3 rounded-xl text-sm transition-colors shadow-sm shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New Chatbot</span>
+          </Link>
         </div>
       </div>
 
@@ -115,142 +108,117 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Stat Cards Grid */}
+      {/* Compact stats row for this project only */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard
-          title="Total Documents"
-          value={stats.total_documents}
-          icon={FileText}
-          description="PDF, DOCX, and TXT files"
+          title="Chatbots"
+          value={stats.agents_count}
+          icon={Bot}
+          description="In this project"
           color="teal"
         />
         <StatCard
-          title="Processed Documents"
-          value={stats.processed_documents}
-          icon={CheckCircle2}
-          description="Ready in this project"
+          title="Documents"
+          value={stats.total_documents}
+          icon={FileText}
+          description="In this project knowledge"
           color="emerald"
         />
         <StatCard
-          title="Questions Asked"
+          title="Messages"
           value={stats.total_questions_asked}
           icon={HelpCircle}
           description="Questions answered"
           color="blue"
         />
         <StatCard
-          title="Total Chunks"
-          value={stats.total_chunks}
-          icon={Layers}
-          description="Knowledge segments"
+          title="Current Plan"
+          value={planLabel}
+          icon={CreditCard}
+          description="For this project"
           color="amber"
         />
       </div>
 
-      {/* Two Column Section: Quick Actions & Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: System Status & Guide */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs">
-            <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center space-x-2">
-              <Activity className="w-5 h-5 text-teal-600" />
-              <span>System Status</span>
-            </h3>
-
-            <div className="space-y-3.5 text-sm">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <span className="text-slate-500">Vector Store</span>
-                <span className="font-medium text-slate-800 flex items-center space-x-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span>ChromaDB Persistent</span>
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <span className="text-slate-500">AI Provider</span>
-                <span className="font-mono text-xs font-semibold text-teal-600 bg-teal-50 px-2 py-0.5 rounded uppercase">
-                  Ollama (self-hosted)
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <span className="text-slate-500">AI Model</span>
-                <span className="font-mono text-xs font-semibold text-teal-600 bg-teal-50 px-2 py-0.5 rounded">
-                  {health?.model || 'qwen2.5:7b'}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <span className="text-slate-500">Embeddings</span>
-                <span className="font-mono text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
-                  {health?.embedding_model || 'bge-m3'}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">Ollama Service</span>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-                  health?.ollama_reachable ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
-                }`}>
-                  {health?.ollama_reachable ? 'Running' : 'Not reachable'}
-                </span>
-              </div>
+      {/* How it works: 3 steps */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {STEPS.map((step) => (
+          <div key={step.n} className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs">
+            <div className="w-8 h-8 rounded-full bg-teal-700 text-white text-sm font-bold flex items-center justify-center">
+              {step.n}
             </div>
+            <h3 className="font-semibold text-slate-800 mt-3 text-sm">{step.title}</h3>
+            <p className="text-xs text-slate-500 mt-1 leading-relaxed">{step.text}</p>
           </div>
+        ))}
+      </div>
+
+      {/* His chatbots in this project */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-base font-semibold text-slate-800">Your chatbots</h3>
+          <Link to="/agents" className="text-xs font-semibold text-teal-700 hover:text-teal-800">
+            Manage all chatbots
+          </Link>
         </div>
 
-        {/* Right Column: Recent Activity */}
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs h-full flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="text-base font-semibold text-slate-800 flex items-center space-x-2">
-                  <Clock className="w-5 h-5 text-teal-600" />
-                  <span>Recent Activity</span>
-                </h3>
-                <Link to="/documents" className="text-xs font-semibold text-teal-600 hover:text-teal-700 flex items-center space-x-1">
-                  <span>View all documents</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-
-              {stats.recent_activity && stats.recent_activity.length > 0 ? (
-                <div className="space-y-3">
-                  {stats.recent_activity.map((item, idx) => (
-                    <div 
-                      key={item.id || idx} 
-                      className="flex items-center justify-between p-3 rounded-xl bg-slate-50 hover:bg-slate-100/70 transition-colors border border-slate-100 text-sm"
-                    >
-                      <div className="flex items-center space-x-3 truncate mr-3">
-                        <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
-                          {item.type === 'upload' && <Upload className="w-4 h-4 text-emerald-600" />}
-                          {item.type === 'delete' && <Clock className="w-4 h-4 text-rose-500" />}
-                          {item.type === 'chat' && <MessageSquare className="w-4 h-4 text-teal-600" />}
-                          {!['upload', 'delete', 'chat'].includes(item.type) && <Activity className="w-4 h-4 text-slate-500" />}
-                        </div>
-                        <div className="truncate">
-                          <p className="font-medium text-slate-800 text-xs truncate">{item.title}</p>
-                          {item.details && <p className="text-[11px] text-slate-500 truncate">{item.details}</p>}
-                        </div>
-                      </div>
-                      <span className="text-[11px] text-slate-400 font-mono flex-shrink-0">
-                        {formatActivityTime(item.timestamp)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 text-slate-400">
-                  <FileText className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                  <p className="text-sm font-medium">No activity yet</p>
-                  <p className="text-xs text-slate-400 mt-1">Upload a document to get started</p>
-                </div>
-              )}
-            </div>
+        {loading ? (
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-10 text-center text-sm text-slate-400">
+            Loading your chatbots...
           </div>
-        </div>
+        ) : agents.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-10 text-center">
+            <Bot className="w-10 h-10 mx-auto text-slate-300 mb-3" />
+            <p className="text-sm font-semibold text-slate-800">Create your first chatbot</p>
+            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+              Create a chatbot, add your documents or website to it, then paste its widget code on your website.
+            </p>
+            <Link
+              to="/agents?new=1"
+              className="inline-flex items-center space-x-2 bg-teal-700 hover:bg-teal-800 text-white font-semibold px-4 py-2.5 rounded-xl text-sm transition-colors shadow-sm mt-5"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New Chatbot</span>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {agents.map((agent) => (
+              <div key={agent.id} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="w-11 h-11 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
+                    <Bot className="w-5 h-5" />
+                  </div>
+                  <span className={`text-[11px] font-semibold px-2 py-1 rounded-full ${agent.is_active === false ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-700'}`}>
+                    {agent.is_active === false ? 'Inactive' : 'Active'}
+                  </span>
+                </div>
+                <h3 className="font-semibold text-slate-900 mt-4">{agent.name}</h3>
+                <p className="text-xs text-slate-500 mt-1 line-clamp-2 min-h-[2rem]">{agent.description || agent.instructions || 'No description set.'}</p>
+                <div className="flex flex-wrap gap-2 mt-4">
+                  <span className="text-[11px] font-semibold bg-slate-100 text-slate-600 px-2 py-1 rounded-full">{agent.mode === 'agent' ? 'RAG + Agent' : 'Strict RAG'}</span>
+                  <span className="text-[11px] font-semibold bg-slate-100 text-slate-600 px-2 py-1 rounded-full flex items-center gap-1">
+                    <Files className="w-3 h-3" /> {agent.documents_count ?? agent.document_count ?? 0} docs
+                  </span>
+                </div>
+                <div className="flex flex-col gap-2 mt-5 pt-4 border-t border-slate-100">
+                  <div className="flex gap-2">
+                    <Link to={`/agents/${agent.id}/knowledge`} className="flex-1 inline-flex items-center justify-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white font-semibold px-3 py-2 rounded-xl text-xs transition-colors">
+                      <Files className="w-4 h-4" /> Add knowledge
+                    </Link>
+                    <Link to={`/agents/${agent.id}/playground`} className="flex-1 inline-flex items-center justify-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold px-3 py-2 rounded-xl text-xs transition-colors">
+                      <FlaskConical className="w-4 h-4" /> Test chat
+                    </Link>
+                  </div>
+                  <Link to="/integrations" className="inline-flex items-center justify-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold px-3 py-2 rounded-xl text-xs transition-colors">
+                    <Plug className="w-4 h-4" /> Add to website
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
-

@@ -71,8 +71,6 @@ export const apiService = {
     return res.data;
   },
   deleteDocument: async (documentId) => (await apiClient.delete(`/api/documents/${documentId}`)).data,
-  sendMessage: async (message, history = []) => (await apiClient.post('/api/chat', { message, history })).data,
-
   // Auth
   signup: async (payload) => (await apiClient.post('/api/auth/signup', payload)).data,
   login: async (payload) => (await apiClient.post('/api/auth/login', payload)).data,

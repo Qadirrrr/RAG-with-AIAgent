@@ -77,8 +77,8 @@ export default function Integrations() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-extrabold text-slate-900">Integrations</h2>
-        <p className="text-sm text-slate-500 mt-1">Embed your chatbot on a website or call it from your own app.</p>
+        <h2 className="text-2xl font-extrabold text-slate-900">Add to your website</h2>
+        <p className="text-sm text-slate-500 mt-1">Pick a chatbot, create its API key, and paste the widget code on your website. The chatbot answers only from that chatbot's own documents and website data, never from another chatbot or project.</p>
       </div>
       <ErrorBox message={error} onRetry={loadAgents} />
 
@@ -88,6 +88,7 @@ export default function Integrations() {
           {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
         {selectedAgent && <p className="text-xs text-slate-500 mt-2">{selectedAgent.provider || ''} {selectedAgent.model ? `/ ${selectedAgent.model}` : ''}</p>}
+        {selectedAgent && <p className="text-xs text-teal-700 mt-1">This chatbot answers only from its own documents. Add or change its data on its Knowledge page.</p>}
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6">

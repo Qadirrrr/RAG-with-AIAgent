@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Bot, Plus, FlaskConical, Files, MessageSquare, Pencil, Trash2, Loader2 } from 'lucide-react';
 import apiService, { apiError, MODEL_OPTIONS } from '../services/api';
 import { useWorkspace } from '../context/WorkspaceContext';
@@ -25,6 +25,8 @@ const emptyForm = { name: '', description: '', instructions: '', language: 'en',
 export default function Agents() {
   const { selectedId, workspaces, createWorkspace } = useWorkspace();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openedFromDashboard = useRef(false);
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -50,6 +52,15 @@ export default function Agents() {
   useEffect(() => { load(); }, [load]);
 
   const openCreate = () => { setEditing(null); setForm(emptyForm); setFormError(null); setShowModal(true); };
+
+  // Dashboard "New Chatbot" button links here with ?new=1: open the create form once, then clear the param.
+  useEffect(() => {
+    if (searchParams.get('new') === '1' && selectedId && !openedFromDashboard.current) {
+      openedFromDashboard.current = true;
+      openCreate();
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, selectedId, setSearchParams]);
   const openEdit = (agent) => {
     setEditing(agent);
     setForm({
