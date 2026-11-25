@@ -110,6 +110,18 @@ class RAGAgentService:
                 agent_steps=["Provider check failed."]
             )
 
+        # Agent mode: hand over to the LangGraph tool-calling engine.
+        # Any failure (tool error, recursion limit, timeout) falls back
+        # to the standard RAG path below instead of surfacing an error.
+        if mode == "agent" and agent_id:
+            try:
+                from app.services.agent_engine import run_agent_answer
+                return await run_agent_answer(
+                    llm=llm, question=question, history=history,
+                    agent_config=agent_config, agent_id=agent_id)
+            except Exception:
+                pass
+
         agent_steps = []
 
         # 1. Vector retrieval: tenant collection only when agent_id is set.
@@ -147,9 +159,9 @@ class RAGAgentService:
         lang_note = f"Answer in {language}." if language else ""
         custom = f"\nAgent instructions: {instructions}" if instructions else ""
         if mode == "agent":
-            # RAG + Agent mode: allow careful multi-step reasoning over the
-            # retrieved knowledge. No external tools are wired up yet, so the
-            # model still answers from knowledge only.
+            # Fallback path only: agent mode normally runs the LangGraph
+            # tool engine above. If that run failed, answer from the
+            # retrieved knowledge with careful multi-step reasoning.
             custom += "\nYou may reason step by step over the knowledge before answering."
         if context_parts:
             context_text = "\n\n".join(context_parts)

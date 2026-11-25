@@ -12,7 +12,15 @@ const LANGUAGES = [
   { value: 'ar', label: 'Arabic' },
 ];
 
-const emptyForm = { name: '', description: '', instructions: '', language: 'en', provider: 'gemini', model: 'gemini-3.5-flash-lite', temperature: 0.7, greeting: '', mode: 'rag', show_citations: false };
+const TOOL_OPTIONS = [
+  { value: 'knowledge_search', label: 'Knowledge search', hint: 'Search this chatbot\'s uploaded documents and websites.' },
+  { value: 'list_documents', label: 'List documents', hint: 'See which documents are in the knowledge base.' },
+  { value: 'calculator', label: 'Calculator', hint: 'Do simple arithmetic.' },
+  { value: 'current_datetime', label: 'Date and time', hint: 'Answer questions about the current date and time.' },
+];
+const ALL_TOOLS = TOOL_OPTIONS.map((t) => t.value);
+
+const emptyForm = { name: '', description: '', instructions: '', language: 'en', provider: 'gemini', model: 'gemini-3.5-flash-lite', temperature: 0.7, greeting: '', mode: 'rag', show_citations: false, tools: [...ALL_TOOLS] };
 
 export default function Agents() {
   const { selectedId, workspaces, createWorkspace } = useWorkspace();
@@ -55,6 +63,7 @@ export default function Agents() {
       greeting: agent.greeting || '',
       mode: agent.mode || 'rag',
       show_citations: Boolean(agent.show_citations),
+      tools: agent.tools_enabled ? agent.tools_enabled.split(',').map((s) => s.trim()).filter((s) => ALL_TOOLS.includes(s)) : [...ALL_TOOLS],
     });
     setFormError(null);
     setShowModal(true);
@@ -75,8 +84,10 @@ export default function Agents() {
     setSaving(true);
     setFormError(null);
     try {
-      if (editing) await apiService.updateAgent(selectedId, editing.id, form);
-      else await apiService.createAgent(selectedId, form);
+      const payload = { ...form, tools_enabled: (form.tools || []).join(',') };
+      delete payload.tools;
+      if (editing) await apiService.updateAgent(selectedId, editing.id, payload);
+      else await apiService.createAgent(selectedId, payload);
       setShowModal(false);
       load();
     } catch (err) {
@@ -212,6 +223,25 @@ export default function Agents() {
               <label className={labelCls}>Greeting message</label>
               <input className={inputCls} value={form.greeting} onChange={(e) => setForm({ ...form, greeting: e.target.value })} placeholder="Hello! How can I help you today?" />
             </div>
+            {form.mode === 'agent' && (
+              <div>
+                <label className={labelCls}>Agent tools</label>
+                <p className="text-xs text-slate-500 mb-2">Choose which tools this chatbot may use. All tools are read-only and can only access this chatbot's own project data.</p>
+                <div className="space-y-2">
+                  {TOOL_OPTIONS.map((t) => (
+                    <label key={t.value} className="flex items-start gap-2.5 text-sm text-slate-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 mt-0.5 accent-teal-700"
+                        checked={(form.tools || []).includes(t.value)}
+                        onChange={(e) => setForm({ ...form, tools: e.target.checked ? [...(form.tools || []), t.value] : (form.tools || []).filter((x) => x !== t.value) })}
+                      />
+                      <span>{t.label} <span className="block text-xs text-slate-500">{t.hint}</span></span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             <label className="flex items-center gap-2.5 text-sm text-slate-700 cursor-pointer">
               <input type="checkbox" className="w-4 h-4 accent-teal-700" checked={form.show_citations} onChange={(e) => setForm({ ...form, show_citations: e.target.checked })} />
               Show source names under answers (citations)

@@ -134,6 +134,8 @@ class Agent(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     mode = Column(String(16), default="rag", nullable=False)
     show_citations = Column(Boolean, default=False, nullable=False)
+    # Comma-separated allowlist of agent-mode tools (see services/agent_engine.py).
+    tools_enabled = Column(Text, default="knowledge_search,list_documents,calculator,current_datetime", nullable=False)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
 
     workspace = relationship("Workspace", back_populates="agents")
@@ -242,6 +244,7 @@ _AGENT_COLUMN_DDL = {
     "is_active": "BOOLEAN NOT NULL DEFAULT {true}",
     "mode": "VARCHAR(16) NOT NULL DEFAULT 'rag'",
     "show_citations": "BOOLEAN NOT NULL DEFAULT {false}",
+    "tools_enabled": "TEXT NOT NULL DEFAULT 'knowledge_search,list_documents,calculator,current_datetime'",
 }
 
 

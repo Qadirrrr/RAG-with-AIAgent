@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     EMBEDDING_PROVIDER: str = "gemini"
     BGE_EMBEDDING_MODEL: str = "bge-m3"
 
+    # Agent mode (LangGraph): maximum tool-calling steps per answer
+    AGENT_MAX_STEPS: int = 5
+
     CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
     UPLOAD_DIRECTORY: str = "./data/uploads"
 

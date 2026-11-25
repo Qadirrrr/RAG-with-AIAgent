@@ -114,6 +114,7 @@ class AgentCreate(BaseModel):
     is_active: bool = True
     mode: str = "rag"
     show_citations: bool = False
+    tools_enabled: str = "knowledge_search,list_documents,calculator,current_datetime"
 
 
 class AgentUpdate(BaseModel):
@@ -128,6 +129,7 @@ class AgentUpdate(BaseModel):
     is_active: Optional[bool] = None
     mode: Optional[str] = None
     show_citations: Optional[bool] = None
+    tools_enabled: Optional[str] = None
 
 
 class AgentOut(BaseModel):
@@ -144,6 +146,7 @@ class AgentOut(BaseModel):
     is_active: bool = True
     mode: str = "rag"
     show_citations: bool = False
+    tools_enabled: str = "knowledge_search,list_documents,calculator,current_datetime"
     created_at: Optional[datetime] = None
 
 

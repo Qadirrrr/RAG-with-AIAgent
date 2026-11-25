@@ -23,7 +23,9 @@ def _agent_config(agent: Agent) -> dict:
     return {"name": agent.name, "instructions": agent.instructions or "", "language": agent.language,
             "provider": agent.provider, "model": agent.model, "temperature": agent.temperature,
             "greeting": agent.greeting or "", "mode": agent.mode or "rag",
-            "show_citations": bool(agent.show_citations)}
+            "show_citations": bool(agent.show_citations),
+            "workspace_id": agent.workspace_id,
+            "tools_enabled": agent.tools_enabled or ""}
 
 
 def _require_active(agent: Agent):

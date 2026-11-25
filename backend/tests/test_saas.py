@@ -284,3 +284,89 @@ def test_new_workspace_stats_are_zero_and_isolated(client):
                     json={"message": "Hello"})
     assert r.status_code == 200, r.text
     assert r.json().get("sources") == []
+
+
+def test_agent_calculator_is_safe():
+    from app.services.agent_engine import calculate_expression
+    assert calculate_expression("2*(3+4)") == "14"
+    assert calculate_expression("19 * 12") == "228"
+    assert calculate_expression("10 / 4") == "2.5"
+    # Code execution attempts are rejected, never evaluated.
+    assert calculate_expression("__import__('os')").startswith("Error")
+    assert calculate_expression("open('x')").startswith("Error")
+    assert calculate_expression("x + 1").startswith("Error")
+
+
+def test_agent_tools_allowlist_filtering():
+    from app.services.agent_engine import build_tools, parse_tools_enabled
+    tools, _ = build_tools(workspace_id="ws-1", agent_id="agent-1",
+                           tools_enabled="calculator,current_datetime")
+    assert sorted(t.name for t in tools) == ["calculator", "current_datetime"]
+    # Unknown names are dropped, duplicates removed, order kept.
+    assert parse_tools_enabled("calculator,bogus,calculator, knowledge_search ") == [
+        "calculator", "knowledge_search"]
+    assert parse_tools_enabled("") == []
+    tools, _ = build_tools(workspace_id="ws-1", agent_id="agent-1", tools_enabled="")
+    assert tools == []
+
+
+def test_agent_knowledge_search_tool_is_bound_to_own_agent(client):
+    from app.services.agent_engine import build_tools
+    from app.services.tenant_vector_store import tenant_vector_store as tvs
+
+    calls = {}
+
+    class FakeDoc:
+        page_content = "Bound knowledge chunk."
+        metadata = {"document_name": "notes.txt", "document_id": "doc-1"}
+
+    original = tvs.similarity_search
+    tvs.similarity_search = lambda agent_id, query, k=4: calls.update(
+        {"agent_id": agent_id, "query": query}) or [FakeDoc()]
+    try:
+        tools, _ = build_tools(workspace_id="ws-9", agent_id="agent-xyz",
+                               tools_enabled="knowledge_search")
+        assert [t.name for t in tools] == ["knowledge_search"]
+        out = tools[0].invoke({"query": "pricing"})
+    finally:
+        tvs.similarity_search = original
+    # The tool searched ONLY the agent id it was built for.
+    assert calls == {"agent_id": "agent-xyz", "query": "pricing"}
+    assert "Bound knowledge chunk." in out
+
+
+def test_agent_tools_enabled_via_api(client):
+    token, _ = _auth(client, "mona@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    ws_id = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+    r = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={
+        "name": "Tool Bot", "mode": "agent", "tools_enabled": "calculator,knowledge_search"})
+    assert r.status_code == 200, r.text
+    assert r.json()["tools_enabled"] == "calculator,knowledge_search"
+    # Unknown tool names are rejected.
+    r = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={
+        "name": "Bad Tool Bot", "mode": "agent", "tools_enabled": "calculator,shell"})
+    assert r.status_code == 400, r.text
+    # Update narrows the allowlist.
+    r = client.get(f"/api/workspaces/{ws_id}/agents", headers=h)
+    bot = [a for a in r.json() if a["name"] == "Tool Bot"][0]
+    r = client.patch(f"/api/workspaces/{ws_id}/agents/{bot['id']}", headers=h,
+                     json={"tools_enabled": "calculator"})
+    assert r.status_code == 200, r.text
+    assert r.json()["tools_enabled"] == "calculator"
+
+
+def test_agent_mode_chat_without_llm_falls_back_gracefully(client):
+    token, _ = _auth(client, "nina@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    ws_id = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+    agent = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={
+        "name": "Agent Mode Bot", "mode": "agent"}).json()
+    assert agent["mode"] == "agent"
+    # LLM is patched to None in the fixture: same graceful no-key style
+    # message as the RAG path, never a 500.
+    r = client.post(f"/api/workspaces/{ws_id}/agents/{agent['id']}/chat", headers=h,
+                    json={"message": "What is 2 + 2?"})
+    assert r.status_code == 200, r.text
+    assert "not configured" in r.json()["response"]
+    assert r.json().get("sources") == []
