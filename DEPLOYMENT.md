@@ -7,21 +7,24 @@ Manual server deployment (Ubuntu VPS). No Docker is used in this project.
 | Requirement | Minimum | Recommended |
 | --- | --- | --- |
 | Server | Ubuntu 22.04 / 24.04 VPS | Linode g6-standard-1 or similar |
-| CPU / RAM / Disk | 2 vCPU, 2 GB RAM, 20 GB disk | 2 vCPU, 4 GB RAM, 40 GB disk |
+| CPU / RAM / Disk | 2 vCPU, 8 GB RAM, 40 GB disk (for qwen2.5:7b) | 4 vCPU, 16 GB RAM, 80 GB disk |
 | Python | 3.12 | 3.12 |
 | Node.js | 20 | 20 LTS |
 | PostgreSQL | 16 | 16 with backups |
 | Web server | Nginx | Nginx + Certbot HTTPS |
 | Domain | A domain pointing at the server | `app.yourdomain.com` |
 | Ports | 80 and 443 open | 8000 and 5432 localhost only |
-| Secrets | Valid `GEMINI_API_KEY` (`AIza...`) or `OPENAI_API_KEY`, long random `JWT_SECRET`, `SUPER_ADMIN_EMAIL` | Same, stored only in `backend/.env` |
+| AI runtime | Ollama installed on the server, models `qwen2.5:7b` and `bge-m3` pulled | Same, Ollama kept updated |
+| Secrets | Long random `JWT_SECRET`, `SUPER_ADMIN_EMAIL` (no AI API keys exist) | Same, stored only in `backend/.env` |
 
-Notes: the old Gemini key (`AQ.Ab8...`) is invalid and must be rotated.
-Without a valid AI key, signup and agents work but chat returns a clear
-"AI API Key is not configured" message. Stripe checkout is a TODO stub;
-plan changes are manual/admin upgrades for now.
+Notes: the AI is fully self-hosted through Ollama, there are no cloud
+AI keys to configure. Without Ollama running, signup and agents work
+but chat returns a clear "self-hosted Ollama service is not available"
+message. Stripe checkout is a TODO stub; plan changes are manual/admin
+upgrades for now.
 
-1. Install Python 3.12, Node 20, PostgreSQL 16 and Nginx.
+1. Install Python 3.12, Node 20, PostgreSQL 16, Nginx and Ollama, then
+   pull the models: `ollama pull qwen2.5:7b` and `ollama pull bge-m3`.
 2. Create the database and user:
 
 ```sql
@@ -32,7 +35,7 @@ GRANT ALL PRIVILEGES ON DATABASE rag_saas TO rag;
 
 3. Clone the repo, configure `backend/.env` with
    `DATABASE_URL=postgresql+psycopg2://rag:change-me@localhost:5432/rag_saas`,
-   a real `GEMINI_API_KEY`/`OPENAI_API_KEY`, a long `JWT_SECRET`, and
+   `OLLAMA_BASE_URL=http://localhost:11434`, a long `JWT_SECRET`, and
    `CORS_ORIGINS=https://your-domain.com`.
 4. Backend as a systemd service (run from the repo `backend/` directory,
    with a venv):
@@ -68,12 +71,12 @@ curl http://localhost:8000/api/plans
 
 ## Production checklist
 
-- [ ] Real `GEMINI_API_KEY` or `OPENAI_API_KEY` (tested with a live chat)
+- [ ] Ollama running, `qwen2.5:7b` and `bge-m3` pulled (tested with a live chat)
 - [ ] Long random `JWT_SECRET`, different from dev
 - [ ] `DATABASE_URL` points at Postgres, with backups enabled
 - [ ] `CORS_ORIGINS` is your frontend origin only, not `*`
 - [ ] `SUPER_ADMIN_EMAIL` set to your admin email
-- [ ] No `.env` file committed to git; rotate any key that was ever committed
+- [ ] No `.env` file committed to git
 - [ ] Stripe checkout wired into `backend/app/routes/plans.py`
       (currently a manual/admin upgrade path, see README)
 - [ ] Uploads and Chroma data on a persistent volume, with backups

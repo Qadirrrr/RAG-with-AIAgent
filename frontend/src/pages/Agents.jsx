@@ -20,7 +20,7 @@ const TOOL_OPTIONS = [
 ];
 const ALL_TOOLS = TOOL_OPTIONS.map((t) => t.value);
 
-const emptyForm = { name: '', description: '', instructions: '', language: 'en', provider: 'gemini', model: 'gemini-3.5-flash-lite', temperature: 0.7, greeting: '', mode: 'rag', show_citations: false, tools: [...ALL_TOOLS] };
+const emptyForm = { name: '', description: '', instructions: '', language: 'en', provider: 'ollama', model: 'qwen2.5:7b', temperature: 0.7, greeting: '', mode: 'rag', show_citations: false, tools: [...ALL_TOOLS] };
 
 export default function Agents() {
   const { selectedId, workspaces, createWorkspace } = useWorkspace();
@@ -57,8 +57,8 @@ export default function Agents() {
       description: agent.description || '',
       instructions: agent.instructions || '',
       language: agent.language || 'en',
-      provider: agent.provider || 'gemini',
-      model: agent.model || MODEL_OPTIONS[agent.provider || 'gemini'][0],
+      provider: 'ollama',
+      model: agent.model || MODEL_OPTIONS.ollama[0],
       temperature: agent.temperature ?? 0.7,
       greeting: agent.greeting || '',
       mode: agent.mode || 'rag',
@@ -151,7 +151,7 @@ export default function Agents() {
               <h3 className="font-semibold text-slate-900 mt-4">{agent.name}</h3>
               <p className="text-xs text-slate-500 mt-1 line-clamp-2 min-h-[2rem]">{agent.description || agent.instructions || 'No description set.'}</p>
               <div className="flex flex-wrap gap-2 mt-4">
-                <span className="text-[11px] font-semibold bg-teal-50 text-teal-700 px-2 py-1 rounded-full">{agent.provider || 'gemini'} / {agent.model || 'default'}</span>
+                <span className="text-[11px] font-semibold bg-teal-50 text-teal-700 px-2 py-1 rounded-full">ollama / {agent.model || 'qwen2.5:7b'}</span>
                 <span className="text-[11px] font-semibold bg-slate-100 text-slate-600 px-2 py-1 rounded-full">{agent.language || 'en'}</span>
                 <span className="text-[11px] font-semibold bg-slate-100 text-slate-600 px-2 py-1 rounded-full">{agent.mode === 'agent' ? 'RAG + Agent' : 'Strict RAG'}</span>
               </div>
@@ -195,11 +195,10 @@ export default function Agents() {
               </div>
               <div>
                 <label className={labelCls}>Provider</label>
-                <select className={inputCls} value={form.provider} onChange={(e) => setForm({ ...form, provider: e.target.value, model: MODEL_OPTIONS[e.target.value][0] })}>
-                  <option value="gemini">Google Gemini</option>
-                  <option value="openai">OpenAI</option>
+                <select className={inputCls} value="ollama" disabled>
                   <option value="ollama">Ollama (self-hosted)</option>
                 </select>
+                <p className="text-xs text-slate-500 mt-1">Runs on your own server. No API key needed.</p>
               </div>
               <div>
                 <label className={labelCls}>Mode</label>
@@ -211,7 +210,7 @@ export default function Agents() {
               <div>
                 <label className={labelCls}>Model</label>
                 <select className={inputCls} value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}>
-                  {MODEL_OPTIONS[form.provider].map((m) => <option key={m} value={m}>{m}</option>)}
+                  {MODEL_OPTIONS.ollama.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
               </div>
               <div>

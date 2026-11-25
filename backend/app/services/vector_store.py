@@ -6,8 +6,6 @@ try:
 except ImportError:
     from langchain_community.vectorstores import Chroma
 
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from langchain_openai import OpenAIEmbeddings
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from app.config import settings
@@ -48,47 +46,17 @@ class VectorStoreService:
         self._cached_key: Optional[str] = None
 
     def get_embeddings(self) -> Optional[Any]:
-        # EMBEDDING_PROVIDER=bge selects self-hosted BGE via Ollama and
-        # takes priority over the cloud providers. The default ("gemini")
-        # keeps the existing behaviour so current collections keep working.
-        if (settings.EMBEDDING_PROVIDER or "").lower() == "bge":
-            if self._embeddings is None or self._cached_provider != "bge":
-                self._embeddings = OllamaBgeEmbeddings(
-                    base_url=settings.OLLAMA_BASE_URL,
-                    model=settings.BGE_EMBEDDING_MODEL,
-                )
-                self._cached_provider = "bge"
-                self._cached_key = None
-                self._vector_store = None
-            return self._embeddings
-
-        provider = settings.get_active_provider()
-
-        if provider == "gemini":
-            key = settings.get_gemini_api_key()
-            if self._embeddings is None or self._cached_provider != "gemini" or self._cached_key != key:
-                self._embeddings = GoogleGenerativeAIEmbeddings(
-                    model=settings.GEMINI_EMBEDDING_MODEL,
-                    google_api_key=key
-                )
-                self._cached_provider = "gemini"
-                self._cached_key = key
-                self._vector_store = None
-            return self._embeddings
-
-        elif provider == "openai":
-            key = settings.get_openai_api_key()
-            if self._embeddings is None or self._cached_provider != "openai" or self._cached_key != key:
-                self._embeddings = OpenAIEmbeddings(
-                    model=settings.OPENAI_EMBEDDING_MODEL,
-                    openai_api_key=key
-                )
-                self._cached_provider = "openai"
-                self._cached_key = key
-                self._vector_store = None
-            return self._embeddings
-
-        return None
+        # Embeddings are always self-hosted BGE via Ollama. There are no
+        # cloud embedding providers in this platform.
+        if self._embeddings is None or self._cached_provider != "bge":
+            self._embeddings = OllamaBgeEmbeddings(
+                base_url=settings.OLLAMA_BASE_URL,
+                model=settings.BGE_EMBEDDING_MODEL,
+            )
+            self._cached_provider = "bge"
+            self._cached_key = None
+            self._vector_store = None
+        return self._embeddings
 
     def get_vector_store(self) -> Optional[Chroma]:
         embeddings = self.get_embeddings()
@@ -105,7 +73,7 @@ class VectorStoreService:
     def add_documents(self, documents: List[Document]) -> int:
         vector_store = self.get_vector_store()
         if vector_store is None:
-            raise ValueError("No AI API Key is configured. Please set your GEMINI_API_KEY in backend/.env")
+            raise ValueError("Embeddings are not available. Please check that Ollama is running on the server and that the embedding model is pulled (ollama pull bge-m3).")
         
         vector_store.add_documents(documents)
         return len(documents)

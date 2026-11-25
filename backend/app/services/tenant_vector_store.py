@@ -48,7 +48,7 @@ class TenantVectorStore:
     def add_documents(self, agent_id: str, workspace_id: str, document_id: str, documents: List[Document]) -> int:
         store = self.get_store(agent_id)
         if store is None:
-            raise ValueError("No AI API Key is configured. Please set GEMINI_API_KEY (or OPENAI_API_KEY) in backend/.env to generate embeddings.")
+            raise ValueError("Embeddings are not available. Please check that Ollama is running on the server and that the embedding model is pulled (ollama pull bge-m3).")
         for doc in documents:
             doc.metadata["workspace_id"] = workspace_id
             doc.metadata["agent_id"] = agent_id

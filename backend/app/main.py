@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="Backend API for RAG AI Agent with LangChain, ChromaDB, and OpenAI."
+    description="Backend API for RAG AI Agent with LangChain, ChromaDB, and self-hosted Ollama."
 )
 
 # CORS: comma-separated origins from env, or * for local dev.

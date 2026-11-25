@@ -46,9 +46,9 @@ class DashboardStats(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
-    provider: str # "gemini" | "openai" | "none"
-    api_configured: bool
-    openai_configured: bool
+    provider: str # always "ollama" (the only, self-hosted provider)
+    ollama_reachable: bool
+    api_configured: bool # kept for older clients: same as ollama_reachable
     chroma_status: str
     model: str
     embedding_model: str
@@ -106,8 +106,8 @@ class AgentCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     instructions: str = ""
     language: str = "en"
-    provider: str = "gemini"
-    model: str = "gemini-3.5-flash-lite"
+    provider: str = "ollama"
+    model: str = "qwen2.5:7b"
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
     greeting: str = ""
     description: str = ""
@@ -138,8 +138,8 @@ class AgentOut(BaseModel):
     name: str
     instructions: str = ""
     language: str = "en"
-    provider: str = "gemini"
-    model: str = "gemini-3.5-flash-lite"
+    provider: str = "ollama"
+    model: str = "qwen2.5:7b"
     temperature: float = 0.2
     greeting: str = ""
     description: str = ""

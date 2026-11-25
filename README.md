@@ -11,8 +11,9 @@ on their website with a chat widget or a REST API. No programming needed.
 - **Backend:** Python + FastAPI
 - **RAG:** LangChain + ChromaDB (per-agent collections)
 - **Database:** PostgreSQL (production) or SQLite (local dev, default)
-- **AI:** OpenAI (`gpt-4o-mini` / `gpt-4o`) and Google Gemini
-  (`gemini-3.5-flash-lite` / `gemini-3.5-flash-lite`), embeddings to match
+- **AI:** Self-hosted Ollama only. Chat uses a Qwen model
+  (`qwen2.5:7b` by default) and embeddings use BGE (`bge-m3`), both
+  served by Ollama on your own server. No cloud AI API keys anywhere.
 
 ## What is included
 
@@ -40,7 +41,7 @@ for production deployment (manual Ubuntu VPS + Postgres, no Docker).
 
 ```bash
 # Backend
-cp backend/.env.example backend/.env   # fill in GEMINI_API_KEY or OPENAI_API_KEY + JWT_SECRET
+cp backend/.env.example backend/.env   # fill in JWT_SECRET (no AI keys needed)
 cd backend
 python -m venv ../.venv && ../.venv/bin/pip install -r requirements.txt
 ../.venv/bin/python run.py              # http://localhost:8000, docs at /docs
@@ -51,10 +52,18 @@ npm install
 npm run dev                             # http://localhost:5173
 ```
 
+Before the first run, install Ollama and pull the models:
+
+```bash
+ollama pull qwen2.5:7b
+ollama pull bge-m3
+```
+
 Sign up in the app. The first account with the email in
-`SUPER_ADMIN_EMAIL` becomes super-admin. A fresh valid Gemini key is
-required for live AI answers; without a key the chat returns a clear
-"AI API Key is not configured" message instead of crashing.
+`SUPER_ADMIN_EMAIL` becomes super-admin. Live AI answers need Ollama
+running with the models pulled; if Ollama is unreachable the chat
+returns a clear "self-hosted Ollama service is not available" message
+instead of crashing.
 
 ## Plans
 
@@ -80,9 +89,9 @@ npm run build                            # production build
 
 ## Security notes
 
-- API keys live only in backend environment variables, never in code.
+- There are no cloud AI API keys: the AI runs on your own Ollama server.
 - Agent API keys are stored as SHA256 hashes; the full key is shown once.
-- `backend/.env` and `frontend/.env` are git-ignored. If a real key was
-  ever committed to a repo, rotate it at the provider, removing the file
-  from tracking does not erase git history.
+- Secrets such as `JWT_SECRET` live only in backend environment
+  variables, never in code. `backend/.env` and `frontend/.env` are
+  git-ignored.
 - Set `CORS_ORIGINS` to your real frontend origin in production, not `*`.

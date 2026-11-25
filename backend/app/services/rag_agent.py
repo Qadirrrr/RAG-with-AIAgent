@@ -1,7 +1,8 @@
 import os
 from typing import List, Dict, Any, Optional
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_openai import ChatOpenAI
+# The chat model client (ChatOllama from langchain_ollama) is imported
+# lazily inside _get_llm: Ollama is the only AI provider in this
+# platform, and there are no cloud providers to fall back to.
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from app.config import settings
 from app.services.vector_store import vector_store_service
@@ -9,22 +10,19 @@ from app.services.storage import storage_service
 from app.models.schemas import ChatResponse, DocumentSource
 
 # Provider -> allowed chat models (validated again in routes/agents.py).
-# For "ollama" the set holds known-good defaults, but any qwen* model
-# string is also accepted (see is_model_allowed), because the exact tag
-# installed on the self-hosted server is chosen by the operator.
+# Ollama is the only provider. The set holds known-good defaults, but
+# any qwen* model string is also accepted (see is_model_allowed),
+# because the exact tag installed on the self-hosted server is chosen
+# by the operator.
 ALLOWED_MODELS = {
-    "gemini": {"gemini-3.5-flash-lite"},
-    "openai": {"gpt-4o-mini", "gpt-4o"},
     "ollama": {"qwen2.5:7b", "qwen2.5:3b", "qwen2.5:14b", "qwen2.5:32b", "qwen3:8b"},
 }
 
 
 def is_model_allowed(provider: str, model: str) -> bool:
-    if provider not in ALLOWED_MODELS:
+    if provider != "ollama":
         return False
-    if provider == "ollama":
-        return bool(model) and (model in ALLOWED_MODELS["ollama"] or model.startswith("qwen"))
-    return model in ALLOWED_MODELS[provider]
+    return bool(model) and (model in ALLOWED_MODELS["ollama"] or model.startswith("qwen"))
 
 
 class RAGAgentService:
@@ -33,47 +31,21 @@ class RAGAgentService:
 
     def _get_llm(self, provider: Optional[str] = None, model: Optional[str] = None,
                  temperature: float = 0.2) -> Optional[Any]:
-        """Build an LLM for the requested provider/model, or the active one."""
-        if provider is None:
-            provider = settings.get_active_provider()
-        if provider == "gemini":
-            key = settings.get_gemini_api_key()
-            if not key:
-                return None
-            chosen_model = model if model in ALLOWED_MODELS["gemini"] else settings.GEMINI_MODEL
-            return ChatGoogleGenerativeAI(
-                model=chosen_model,
-                google_api_key=key,
-                temperature=temperature,
-                max_retries=1  # Prevent long retry hangs
-            )
-        elif provider == "openai":
-            key = settings.get_openai_api_key()
-            if not key:
-                return None
-            chosen_model = model if model in ALLOWED_MODELS["openai"] else settings.OPENAI_MODEL
-            return ChatOpenAI(
+        """Build the LLM client for the self-hosted Ollama server.
+
+        Ollama is the only provider and needs no API key. The provider
+        argument is accepted for call compatibility and ignored.
+        """
+        chosen_model = model if is_model_allowed("ollama", model or "") else settings.OLLAMA_MODEL
+        try:
+            from langchain_ollama import ChatOllama
+            return ChatOllama(
                 model=chosen_model,
                 temperature=temperature,
-                openai_api_key=key,
-                max_retries=1
+                base_url=settings.OLLAMA_BASE_URL.rstrip("/"),
             )
-        elif provider == "ollama":
-            # Self-hosted Ollama needs no cloud API key. Ollama exposes an
-            # OpenAI-compatible endpoint at <base>/v1, so ChatOpenAI is
-            # used with a dummy key instead of requiring langchain-ollama.
-            chosen_model = model if is_model_allowed("ollama", model or "") else settings.OLLAMA_MODEL
-            try:
-                return ChatOpenAI(
-                    model=chosen_model,
-                    temperature=temperature,
-                    openai_api_key="ollama",
-                    base_url=settings.OLLAMA_BASE_URL.rstrip("/") + "/v1",
-                    max_retries=1
-                )
-            except Exception:
-                return None
-        return None
+        except Exception:
+            return None
 
     async def answer_question(self, question: str, history: List[Dict[str, str]] = None,
                               agent_config: Optional[Dict[str, Any]] = None,
@@ -99,11 +71,10 @@ class RAGAgentService:
 
         llm = self._get_llm(provider=provider, model=model, temperature=temperature)
         if not llm:
-            if provider == "ollama":
-                msg = ("The self-hosted AI service (Ollama) is not available. "
-                       "Please make sure Ollama is running on the server and try again.")
-            else:
-                msg = "AI API Key is not configured. Please add your `GEMINI_API_KEY` to `backend/.env`."
+            msg = ("The self-hosted Ollama service is not available. "
+                   "Please check that Ollama is running on the server and that the model "
+                   f"'{settings.OLLAMA_MODEL}' is pulled (ollama pull {settings.OLLAMA_MODEL}), "
+                   "then try again.")
             return ChatResponse(
                 response=msg,
                 sources=[],

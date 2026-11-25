@@ -169,30 +169,30 @@ export default function Dashboard() {
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <span className="text-slate-500">AI Provider</span>
                 <span className="font-mono text-xs font-semibold text-teal-600 bg-teal-50 px-2 py-0.5 rounded uppercase">
-                  {health?.provider === 'gemini' ? 'Google Gemini' : health?.provider === 'openai' ? 'OpenAI' : 'None'}
+                  Ollama (self-hosted)
                 </span>
               </div>
 
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <span className="text-slate-500">AI Model</span>
                 <span className="font-mono text-xs font-semibold text-teal-600 bg-teal-50 px-2 py-0.5 rounded">
-                  {health?.model || 'gemini-3.5-flash-lite'}
+                  {health?.model || 'qwen2.5:7b'}
                 </span>
               </div>
 
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <span className="text-slate-500">Embeddings</span>
                 <span className="font-mono text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
-                  {health?.embedding_model || 'models/text-embedding-004'}
+                  {health?.embedding_model || 'bge-m3'}
                 </span>
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">API Key</span>
+                <span className="text-slate-500">Ollama Service</span>
                 <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-                  health?.api_configured ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                  health?.ollama_reachable ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
                 }`}>
-                  {health?.api_configured ? 'Configured' : 'Missing in .env'}
+                  {health?.ollama_reachable ? 'Running' : 'Not reachable'}
                 </span>
               </div>
             </div>

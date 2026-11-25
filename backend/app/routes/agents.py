@@ -6,7 +6,7 @@ from app.db import Agent, ensure_free_subscription, get_db
 from app.deps import get_current_user, get_workspace_or_404
 from app.models.schemas import AgentCreate, AgentOut, AgentUpdate
 from app.services.agent_engine import ALL_TOOL_NAMES
-from app.services.rag_agent import ALLOWED_MODELS, is_model_allowed
+from app.services.rag_agent import is_model_allowed
 
 router = APIRouter(prefix="/api/workspaces", tags=["agents"])
 
@@ -22,13 +22,14 @@ def _agent_out(a: Agent) -> AgentOut:
 
 
 def _validate_provider_model(provider: str, model: str):
-    if provider not in ALLOWED_MODELS:
+    if provider != "ollama":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=f"Unknown provider '{provider}'. Use 'gemini', 'openai' or 'ollama'.")
+                            detail=f"Provider '{provider}' is not supported. This platform is "
+                                   "self-hosted only: use provider 'ollama'.")
     if not is_model_allowed(provider, model):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail=f"Model '{model}' is not available for provider '{provider}'. "
-                                   f"Allowed: {', '.join(sorted(ALLOWED_MODELS[provider]))}.")
+                            detail=f"Model '{model}' is not available for provider 'ollama'. "
+                                   "Use a Qwen model tag, for example 'qwen2.5:7b'.")
 
 
 def _validate_mode(mode: str):

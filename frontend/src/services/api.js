@@ -53,9 +53,7 @@ export const FALLBACK_PLANS = [
 ];
 
 export const MODEL_OPTIONS = {
-  gemini: ['gemini-3.5-flash-lite'],
-  openai: ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'],
-  ollama: ['qwen2.5:7b', 'qwen2.5:3b', 'qwen2.5:14b', 'qwen3:8b'],
+  ollama: ['qwen2.5:7b', 'qwen2.5:3b', 'qwen2.5:14b'],
 };
 
 export const apiService = {

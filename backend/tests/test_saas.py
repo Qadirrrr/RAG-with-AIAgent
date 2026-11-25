@@ -12,8 +12,7 @@ import tempfile
 os.environ["DATABASE_URL"] = "sqlite:///" + os.path.join(
     tempfile.gettempdir(), "test_saas_%s.db" % os.getpid())
 os.environ["JWT_SECRET"] = "test-secret-for-pytest-only"
-os.environ["GEMINI_API_KEY"] = ""
-os.environ["OPENAI_API_KEY"] = ""
+os.environ["OLLAMA_BASE_URL"] = "http://localhost:11434"
 os.environ["SUPER_ADMIN_EMAIL"] = "admin@example.com"
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -89,14 +88,14 @@ def test_workspace_agent_upload_chat_flow(client):
 
     r = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={
         "name": "Support Bot", "instructions": "Be helpful.", "language": "en",
-        "provider": "gemini", "model": "gemini-3.5-flash-lite", "temperature": 0.2})
+        "provider": "ollama", "model": "qwen2.5:7b", "temperature": 0.2})
     assert r.status_code == 200, r.text
     agent = r.json()
     assert agent["name"] == "Support Bot"
 
-    # Invalid provider/model combo is rejected.
+    # Invalid model for the ollama provider is rejected.
     r = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={
-        "name": "Bad Bot", "provider": "gemini", "model": "gpt-4o"})
+        "name": "Bad Bot", "provider": "ollama", "model": "gpt-4o"})
     assert r.status_code == 400, r.text
 
     # Upload a TXT knowledge file.
@@ -106,12 +105,12 @@ def test_workspace_agent_upload_chat_flow(client):
     assert r.json()["status"] == "processed"
     assert r.json()["chunks_count"] >= 1
 
-    # Playground chat without a real AI key: graceful message, not a 500.
+    # Playground chat with the LLM unavailable: graceful message, not a 500.
     r = client.post(f"/api/workspaces/{ws_id}/agents/{agent['id']}/chat", headers=h,
                     json={"message": "What does CloudNest offer?"})
     assert r.status_code == 200, r.text
     assert "response" in r.json()
-    assert "not configured" in r.json()["response"]
+    assert "not available" in r.json()["response"]
 
     # Analytics works.
     r = client.get(f"/api/workspaces/{ws_id}/analytics", headers=h)
@@ -261,6 +260,17 @@ def test_ollama_agent_creation_without_cloud_key(client):
     assert "Ollama" in r.json()["response"]
 
 
+def test_cloud_provider_is_rejected(client):
+    """Cloud providers are removed: only self-hosted ollama is accepted."""
+    token, _ = _auth(client, "olga@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    ws_id = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+    r = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={
+        "name": "Cloud Bot", "provider": "gemini", "model": "gemini-3.5-flash-lite"})
+    assert r.status_code == 400, r.text
+    assert "ollama" in r.json()["detail"]
+
+
 def test_new_workspace_stats_are_zero_and_isolated(client):
     """A fresh workspace must show only its own data: zeros, no other workspace's docs."""
     token, _ = _auth(client, "heidi@example.com")
@@ -363,10 +373,10 @@ def test_agent_mode_chat_without_llm_falls_back_gracefully(client):
     agent = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={
         "name": "Agent Mode Bot", "mode": "agent"}).json()
     assert agent["mode"] == "agent"
-    # LLM is patched to None in the fixture: same graceful no-key style
-    # message as the RAG path, never a 500.
+    # LLM is patched to None in the fixture: same graceful Ollama
+    # unavailable message as the RAG path, never a 500.
     r = client.post(f"/api/workspaces/{ws_id}/agents/{agent['id']}/chat", headers=h,
                     json={"message": "What is 2 + 2?"})
     assert r.status_code == 200, r.text
-    assert "not configured" in r.json()["response"]
+    assert "not available" in r.json()["response"]
     assert r.json().get("sources") == []

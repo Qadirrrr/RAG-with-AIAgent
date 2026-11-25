@@ -59,19 +59,10 @@ async def upload_document(file: UploadFile = File(...)):
     # Extract, chunk, and embed
     try:
         chunks = document_loader_service.load_and_split(file_path, doc_id, filename)
-        
-        # Check provider & embeddings
-        provider = settings.get_active_provider()
-        if provider == "none":
-            doc_info["status"] = "failed"
-            doc_info["error_message"] = "AI API Key is missing. Configure GEMINI_API_KEY (or OPENAI_API_KEY) in backend/.env to generate embeddings."
-            storage_service.save_document(doc_info)
-            storage_service.log_activity("upload_failed", f"Failed: {filename}", "AI API Key missing")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="AI API Key is not configured. Please add GEMINI_API_KEY to backend/.env."
-            )
 
+        # Embeddings come from the self-hosted Ollama server (BGE model).
+        # If Ollama is unreachable, add_documents raises and the document
+        # is marked failed with that message below, not a server crash.
         vector_store_service.add_documents(chunks)
         
         # Mark as processed
@@ -85,10 +76,10 @@ async def upload_document(file: UploadFile = File(...)):
         raise
     except Exception as e:
         error_str = str(e)
-        if "429" in error_str or "no credits remaining" in error_str.lower() or "insufficient_quota" in error_str.lower():
-            friendly_error = "OpenAI Quota Exceeded (429): You have no credits remaining on your OpenAI account. Please add billing credits at https://platform.openai.com/settings/organization/billing or provide an active API key."
-        elif "invalid_api_key" in error_str.lower() or "incorrect api key" in error_str.lower():
-            friendly_error = "Invalid OpenAI API Key. Please verify the OPENAI_API_KEY in backend/.env."
+        if "connect" in error_str.lower() or "ollama" in error_str.lower():
+            friendly_error = ("Could not reach the self-hosted Ollama service to generate embeddings. "
+                              "Please check that Ollama is running and that the embedding model is pulled "
+                              "(ollama pull bge-m3).")
         else:
             friendly_error = f"Failed to process and embed document: {error_str}"
 

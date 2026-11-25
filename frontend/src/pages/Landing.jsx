@@ -32,7 +32,7 @@ export default function Landing() {
       <main>
         <section className="max-w-7xl mx-auto px-4 sm:px-8 py-16 sm:py-24 text-center">
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-100">
-            Powered by LangChain, ChromaDB, OpenAI and Google Gemini
+            Powered by self-hosted Ollama models, LangChain and ChromaDB
           </span>
           <h1 className="mt-6 text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-900 leading-tight">
             Build a chatbot that knows your business

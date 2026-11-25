@@ -1,7 +1,7 @@
 AURORA AI AGENT PLATFORM - TECHNICAL SPECIFICATIONS
 
 1. ARCHITECTURE OVERVIEW
-The Aurora AI Platform is an enterprise-grade Retrieval-Augmented Generation (RAG) system designed to orchestrate autonomous AI agents. The platform leverages FastAPI for high-throughput asynchronous API endpoints, LangChain for agent orchestration, ChromaDB for vector retrieval, and OpenAI models for reasoning and synthesis.
+The Aurora AI Platform is an enterprise-grade Retrieval-Augmented Generation (RAG) system designed to orchestrate autonomous AI agents. The platform leverages FastAPI for high-throughput asynchronous API endpoints, LangChain for agent orchestration, ChromaDB for vector retrieval, and self-hosted Qwen models for reasoning and synthesis.
 
 2. VECTOR EMBEDDINGS & CHROMA PERSISTENCE
 - Default Embedding Model: text-embedding-3-small (1536 dimensions).
@@ -10,7 +10,7 @@ The Aurora AI Platform is an enterprise-grade Retrieval-Augmented Generation (RA
 - Persistence: ChromaDB local vector storage with SQLite index backing.
 
 3. AGENT RETRIEVAL PIPELINE
-The AI Agent operates using OpenAI function-calling / tool-calling capabilities. When a query is received:
+The AI Agent operates using tool-calling capabilities. When a query is received:
 1. The agent inspects the user question.
 2. The agent executes the `search_documents` tool to query the Chroma vector store.
 3. The system injects relevant document chunks including metadata (source filename and page number).

@@ -5,11 +5,19 @@
 - Python 3.11+ (3.12 tested)
 - Node.js 18+ and npm
 - PostgreSQL 15+ (optional for local dev; SQLite is the default)
-- A Google Gemini API key (free at https://aistudio.google.com) **or**
-  an OpenAI API key. The key must be a real provider key
-  (`AIza...` for Gemini, `sk-...` for OpenAI). An OAuth access token
-  (`AQ...`) is not a Gemini API key and will be rejected with 401
-  UNAUTHENTICATED.
+- Ollama installed on the same machine (or another server you point
+  `OLLAMA_BASE_URL` at). No cloud AI API keys are used anywhere.
+  Install Ollama from https://ollama.com, then pull the models:
+
+```bash
+ollama pull qwen2.5:7b
+ollama pull bge-m3
+```
+
+  `qwen2.5:7b` needs about 8 GB of RAM and runs on CPU when there is
+  no GPU, so answers are slower than a cloud model. On a smaller
+  machine, set `OLLAMA_MODEL=qwen2.5:3b` in `backend/.env` and pull
+  that model instead.
 
 ## 1. Clone and configure
 
@@ -23,8 +31,8 @@ cp .env.example .env        # optional, root copy
 Edit `backend/.env` and set at least:
 
 ```env
-GEMINI_API_KEY=AIza...your_real_key...
-# or OPENAI_API_KEY=sk-...
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5:7b
 JWT_SECRET=<long random string, e.g. output of: openssl rand -hex 32>
 SUPER_ADMIN_EMAIL=you@example.com
 CORS_ORIGINS=http://localhost:5173
@@ -99,15 +107,19 @@ npm run build
 ```
 
 The SaaS tests use a temporary SQLite database and fake embeddings /
-a patched LLM, so they pass with no real AI key. Live RAG needs a
-valid key (see Requirements above).
+a patched LLM, so they pass without a running Ollama. Live RAG needs
+Ollama running with the models pulled (see Requirements above).
 
 ## Troubleshooting
 
-- `AI API Key is not configured` in chat: set `GEMINI_API_KEY` (or
-  `OPENAI_API_KEY`) in `backend/.env` and restart the backend.
-- `401 UNAUTHENTICATED` from Gemini: the key is not a valid Gemini
-  API key. Create a new one at Google AI Studio and replace it.
+- `The self-hosted Ollama service is not available` in chat: Ollama
+  is not running, or the chat model is not pulled. Start Ollama and
+  run `ollama pull qwen2.5:7b`, then try again.
+- `model 'qwen2.5:7b' not found` in chat: the model tag in the
+  chatbot settings is not pulled on the Ollama server. Pull it with
+  `ollama pull qwen2.5:7b` (check `ollama list` for what is installed).
+- Document upload fails with an embeddings error: pull the embedding
+  model with `ollama pull bge-m3` and make sure Ollama is running.
 - `Please provide a valid email address` on signup: use a real
   deliverable email address (`.local` addresses are rejected).
 - `429` on chat: the workspace hit its monthly message limit for its

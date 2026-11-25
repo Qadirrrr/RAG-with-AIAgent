@@ -88,7 +88,7 @@ export default function Settings() {
               <p className="text-xs text-slate-500 mt-0.5">Powers LLM reasoning and semantic vector embeddings</p>
             </div>
             <span className="font-mono text-xs font-bold uppercase text-teal-700 bg-teal-50 border border-teal-200/60 px-3 py-1.5 rounded-xl">
-              {health?.provider === 'gemini' ? 'Google Gemini' : health?.provider === 'openai' ? 'OpenAI' : 'Not Configured'}
+              Ollama (self-hosted)
             </span>
           </div>
 
@@ -98,7 +98,7 @@ export default function Settings() {
               <p className="text-xs text-slate-500 mt-0.5">Powers the LangChain AI Agent reasoner</p>
             </div>
             <span className="font-mono text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200/60 px-3 py-1.5 rounded-xl">
-              {health?.model || 'gemini-3.5-flash-lite'}
+              {health?.model || 'qwen2.5:7b'}
             </span>
           </div>
 
@@ -108,25 +108,25 @@ export default function Settings() {
               <p className="text-xs text-slate-500 mt-0.5">Converts document chunks into ChromaDB vectors</p>
             </div>
             <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl">
-              {health?.embedding_model || 'models/text-embedding-004'}
+              {health?.embedding_model || 'bge-m3'}
             </span>
           </div>
 
           <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
             <div>
-              <p className="text-sm font-medium text-slate-800">API Key Status</p>
-              <p className="text-xs text-slate-500 mt-0.5">Configured in backend/.env (GEMINI_API_KEY or OPENAI_API_KEY)</p>
+              <p className="text-sm font-medium text-slate-800">Ollama Service Status</p>
+              <p className="text-xs text-slate-500 mt-0.5">Runs on this server, no API key needed. Set OLLAMA_BASE_URL in backend/.env if it runs elsewhere.</p>
             </div>
             <div className="flex items-center space-x-2">
-              {health?.api_configured ? (
+              {health?.ollama_reachable ? (
                 <span className="inline-flex items-center space-x-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Configured ({health.provider?.toUpperCase()})</span>
+                  <span>Running</span>
                 </span>
               ) : (
                 <span className="inline-flex items-center space-x-1.5 text-xs font-semibold text-amber-700 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200">
                   <AlertTriangle className="w-3.5 h-3.5" />
-                  <span>Missing in backend/.env</span>
+                  <span>Not reachable</span>
                 </span>
               )}
             </div>
