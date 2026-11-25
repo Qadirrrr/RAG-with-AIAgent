@@ -89,7 +89,7 @@ def test_workspace_agent_upload_chat_flow(client):
 
     r = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={
         "name": "Support Bot", "instructions": "Be helpful.", "language": "en",
-        "provider": "gemini", "model": "gemini-2.0-flash", "temperature": 0.2})
+        "provider": "gemini", "model": "gemini-3.5-flash-lite", "temperature": 0.2})
     assert r.status_code == 200, r.text
     agent = r.json()
     assert agent["name"] == "Support Bot"

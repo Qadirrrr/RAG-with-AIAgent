@@ -107,7 +107,7 @@ class AgentCreate(BaseModel):
     instructions: str = ""
     language: str = "en"
     provider: str = "gemini"
-    model: str = "gemini-2.0-flash"
+    model: str = "gemini-3.5-flash-lite"
     temperature: float = Field(default=0.2, ge=0.0, le=2.0)
     greeting: str = ""
 
@@ -129,7 +129,7 @@ class AgentOut(BaseModel):
     instructions: str = ""
     language: str = "en"
     provider: str = "gemini"
-    model: str = "gemini-2.0-flash"
+    model: str = "gemini-3.5-flash-lite"
     temperature: float = 0.2
     greeting: str = ""
     created_at: Optional[datetime] = None

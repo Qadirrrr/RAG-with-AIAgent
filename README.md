@@ -12,7 +12,7 @@ on their website with a chat widget or a REST API. No programming needed.
 - **RAG:** LangChain + ChromaDB (per-agent collections)
 - **Database:** PostgreSQL (production) or SQLite (local dev, default)
 - **AI:** OpenAI (`gpt-4o-mini` / `gpt-4o`) and Google Gemini
-  (`gemini-2.0-flash` / `gemini-3.5-flash-lite`), embeddings to match
+  (`gemini-3.5-flash-lite` / `gemini-3.5-flash-lite`), embeddings to match
 
 ## What is included
 

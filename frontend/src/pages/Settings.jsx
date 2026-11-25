@@ -98,7 +98,7 @@ export default function Settings() {
               <p className="text-xs text-slate-500 mt-0.5">Powers the LangChain AI Agent reasoner</p>
             </div>
             <span className="font-mono text-xs font-bold text-teal-700 bg-teal-50 border border-teal-200/60 px-3 py-1.5 rounded-xl">
-              {health?.model || 'gemini-1.5-flash'}
+              {health?.model || 'gemini-3.5-flash-lite'}
             </span>
           </div>
 

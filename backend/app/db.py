@@ -127,7 +127,7 @@ class Agent(Base):
     instructions = Column(Text, default="", nullable=False)
     language = Column(String(32), default="en", nullable=False)
     provider = Column(String(32), default="gemini", nullable=False)
-    model = Column(String(128), default="gemini-2.0-flash", nullable=False)
+    model = Column(String(128), default="gemini-3.5-flash-lite", nullable=False)
     temperature = Column(Float, default=0.2, nullable=False)
     greeting = Column(Text, default="", nullable=False)
     created_at = Column(DateTime, default=_utcnow, nullable=False)

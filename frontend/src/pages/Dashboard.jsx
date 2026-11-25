@@ -166,7 +166,7 @@ export default function Dashboard() {
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <span className="text-slate-500">AI Model</span>
                 <span className="font-mono text-xs font-semibold text-teal-600 bg-teal-50 px-2 py-0.5 rounded">
-                  {health?.model || 'gemini-1.5-flash'}
+                  {health?.model || 'gemini-3.5-flash-lite'}
                 </span>
               </div>
 

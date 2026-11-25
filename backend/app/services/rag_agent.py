@@ -10,7 +10,7 @@ from app.models.schemas import DocumentSource, ChatResponse
 
 # Provider -> allowed chat models (validated again in routes/agents.py).
 ALLOWED_MODELS = {
-    "gemini": {"gemini-2.0-flash", "gemini-3.5-flash-lite"},
+    "gemini": {"gemini-3.5-flash-lite"},
     "openai": {"gpt-4o-mini", "gpt-4o"},
 }
 

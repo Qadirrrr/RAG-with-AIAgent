@@ -12,7 +12,7 @@ const LANGUAGES = [
   { value: 'ar', label: 'Arabic' },
 ];
 
-const emptyForm = { name: '', instructions: '', language: 'en', provider: 'gemini', model: 'gemini-1.5-flash', temperature: 0.7, greeting: '' };
+const emptyForm = { name: '', instructions: '', language: 'en', provider: 'gemini', model: 'gemini-3.5-flash-lite', temperature: 0.7, greeting: '' };
 
 export default function Agents() {
   const { selectedId, workspaces, createWorkspace } = useWorkspace();

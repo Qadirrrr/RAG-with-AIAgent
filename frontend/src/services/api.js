@@ -53,7 +53,7 @@ export const FALLBACK_PLANS = [
 ];
 
 export const MODEL_OPTIONS = {
-  gemini: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash'],
+  gemini: ['gemini-3.5-flash-lite'],
   openai: ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo'],
 };
 
