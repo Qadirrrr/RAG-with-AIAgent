@@ -13,6 +13,26 @@ class DocumentLoaderService:
             separators=["\n\n", "\n", " ", ""]
         )
 
+    def split_text(self, text: str, document_id: str, original_filename: str, extra_metadata: dict = None) -> List[Document]:
+        """Split raw text (for example from a website URL) into chunks."""
+        docs = [
+            Document(
+                page_content=text.strip(),
+                metadata={
+                    "document_id": document_id,
+                    "document_name": original_filename,
+                    "page": 1,
+                    **(extra_metadata or {}),
+                },
+            )
+        ]
+        chunks = self.text_splitter.split_documents(docs)
+        for i, chunk in enumerate(chunks):
+            chunk.metadata["chunk_index"] = i
+            chunk.metadata["document_id"] = document_id
+            chunk.metadata["document_name"] = original_filename
+        return chunks
+
     def load_and_split(self, file_path: str, document_id: str, original_filename: str) -> List[Document]:
         ext = os.path.splitext(original_filename)[1].lower()
         docs = []

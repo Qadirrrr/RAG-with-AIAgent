@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     
     CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
     UPLOAD_DIRECTORY: str = "./data/uploads"
+
+    # SaaS settings
+    DATABASE_URL: str = ""
+    JWT_SECRET: str = ""
+    JWT_EXPIRE_HOURS: int = 24
+    CORS_ORIGINS: str = "*"
+    SUPER_ADMIN_EMAIL: str = ""
     
     HOST: str = "0.0.0.0"
     PORT: int = 8000
