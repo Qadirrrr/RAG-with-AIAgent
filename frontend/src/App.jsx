@@ -2,23 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
-import Dashboard from './pages/Dashboard';
-import Documents from './pages/Documents';
-import Settings from './pages/Settings';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import Landing from './pages/Landing';
 import Agents from './pages/Agents';
 import Playground from './pages/Playground';
 import Knowledge from './pages/Knowledge';
-import Analytics from './pages/Analytics';
-import Billing from './pages/Billing';
 import Integrations from './pages/Integrations';
-import Admin from './pages/Admin';
+import Documents from './pages/Documents';
+import Settings from './pages/Settings';
 import apiService from './services/api';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider } from './context/AuthContext';
 import { WorkspaceProvider } from './context/WorkspaceContext';
-import { Spinner } from './components/ui';
 
 const routeTitles = {
   '/': 'AI Chatbots',
@@ -27,20 +19,6 @@ const routeTitles = {
   '/documents': 'Knowledge Documents',
   '/settings': 'System Settings',
 };
-
-function ProtectedRoute({ children }) {
-  const { isAuthenticated, loading } = useAuth();
-  if (loading) return <div className="min-h-screen bg-[#F7F9FB]"><Spinner label="Checking your session..." /></div>;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return children;
-}
-
-function PublicOnly({ children }) {
-  const { isAuthenticated, loading } = useAuth();
-  if (loading) return <div className="min-h-screen bg-[#F7F9FB]"><Spinner label="Checking your session..." /></div>;
-  if (isAuthenticated) return <Navigate to="/" replace />;
-  return children;
-}
 
 function Shell() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -87,12 +65,7 @@ export default function App() {
   return (
     <AuthProvider>
       <WorkspaceProvider>
-        <Routes>
-          <Route path="/landing" element={<Landing />} />
-          <Route path="/login" element={<PublicOnly><Login /></PublicOnly>} />
-          <Route path="/signup" element={<PublicOnly><Signup /></PublicOnly>} />
-          <Route path="/*" element={<ProtectedRoute><Shell /></ProtectedRoute>} />
-        </Routes>
+        <Shell />
       </WorkspaceProvider>
     </AuthProvider>
   );

@@ -1,43 +1,45 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import apiService, { WORKSPACE_KEY } from '../services/api';
-import { useAuth } from './AuthContext';
 
 const WorkspaceContext = createContext(null);
 
 export function WorkspaceProvider({ children }) {
-  const { isAuthenticated } = useAuth();
   const [workspaces, setWorkspaces] = useState([]);
-  const [selectedId, setSelectedId] = useState(() => localStorage.getItem(WORKSPACE_KEY));
+  const [selectedId, setSelectedId] = useState(() => localStorage.getItem(WORKSPACE_KEY) || 'default');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
-    if (!isAuthenticated) return [];
     setLoading(true);
     setError(null);
     try {
-      const list = await apiService.getWorkspaces();
-      setWorkspaces(list);
-      if (list.length > 0) {
-        const saved = localStorage.getItem(WORKSPACE_KEY);
-        const valid = list.find((w) => String(w.id) === String(saved));
-        const chosen = valid ? valid.id : list[0].id;
-        setSelectedId(chosen);
-        localStorage.setItem(WORKSPACE_KEY, chosen);
-      } else {
-        setSelectedId(null);
-        localStorage.removeItem(WORKSPACE_KEY);
+      let list = await apiService.getWorkspaces();
+      if (!list || list.length === 0) {
+        // Automatically create a default workspace
+        try {
+          const created = await apiService.createWorkspace({ name: 'Default' });
+          const newWs = created.workspace || created;
+          if (newWs?.id) list = [newWs];
+        } catch (_) {}
       }
-      return list;
+      setWorkspaces(list || []);
+      if (list && list.length > 0) {
+        const id = list[0].id;
+        setSelectedId(id);
+        localStorage.setItem(WORKSPACE_KEY, id);
+      }
+      return list || [];
     } catch (err) {
       setError(err?.response?.data?.detail || err.message || 'Could not load workspaces.');
       return [];
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const selectWorkspace = (id) => {
     setSelectedId(id);
@@ -54,20 +56,23 @@ export function WorkspaceProvider({ children }) {
   };
 
   const deleteWorkspace = async (id) => {
-    const wasSelected = String(selectedId) === String(id);
-    const remaining = workspaces.filter((w) => String(w.id) !== String(id));
     await apiService.deleteWorkspace(id);
-    setWorkspaces(remaining);
-    if (wasSelected) {
-      if (remaining.length > 0) selectWorkspace(remaining[0].id);
-      else selectWorkspace(null);
-    }
+    await load();
   };
 
-  const selected = workspaces.find((w) => String(w.id) === String(selectedId)) || null;
-
   return (
-    <WorkspaceContext.Provider value={{ workspaces, selected, selectedId, loading, error, load, selectWorkspace, createWorkspace, deleteWorkspace }}>
+    <WorkspaceContext.Provider
+      value={{
+        workspaces,
+        selectedId,
+        loading,
+        error,
+        load,
+        selectWorkspace,
+        createWorkspace,
+        deleteWorkspace,
+      }}
+    >
       {children}
     </WorkspaceContext.Provider>
   );
