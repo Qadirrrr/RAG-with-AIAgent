@@ -41,11 +41,8 @@ def _get_agent(workspace_id: str, agent_id: str, user, db: Session) -> Agent:
 
 
 def _check_document_limit(workspace_id: str, db: Session):
+    # Single-tenant self-hosted: no document limits enforced.
     sub = ensure_free_subscription(db, workspace_id)
-    count = db.query(Document).filter(Document.workspace_id == workspace_id).count()
-    if count >= sub.document_limit:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail=f"Your {sub.plan} plan allows {sub.document_limit} document(s). Upgrade your plan to add more.")
     return sub
 
 

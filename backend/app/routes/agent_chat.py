@@ -35,12 +35,8 @@ def _require_active(agent: Agent):
 
 
 def _check_message_limit(sub: Subscription):
-    if sub.status != "active":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail="Your subscription is not active. Please upgrade or contact support.")
-    if sub.messages_used_this_month >= sub.monthly_message_limit:
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                            detail=f"Monthly message limit reached ({sub.monthly_message_limit} messages on the {sub.plan} plan). Upgrade your plan to continue.")
+    # Single-tenant self-hosted: no message limits enforced.
+    pass
 
 
 def _record_usage(db: Session, workspace_id: str, agent_id: str, sub: Subscription):

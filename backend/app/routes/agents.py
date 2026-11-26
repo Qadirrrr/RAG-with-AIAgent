@@ -88,10 +88,7 @@ def create_agent(workspace_id: str, payload: AgentCreate, user=Depends(get_curre
     _validate_tools_enabled(payload.tools_enabled or "")
     _validate_widget_settings(payload.widget_color, payload.widget_position, payload.widget_icon)
     sub = ensure_free_subscription(db, ws.id)
-    count = db.query(Agent).filter(Agent.workspace_id == ws.id).count()
-    if count >= sub.agent_limit:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail=f"Your {sub.plan} plan allows {sub.agent_limit} agent(s). Upgrade your plan to create more agents.")
+    # Single-tenant self-hosted: no agent count limits enforced.
     agent = Agent(workspace_id=ws.id, name=payload.name.strip(), instructions=payload.instructions or "",
                   language=payload.language or "en", provider=payload.provider, model=payload.model,
                   temperature=payload.temperature, greeting=payload.greeting or "",

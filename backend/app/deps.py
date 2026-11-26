@@ -47,7 +47,7 @@ def get_current_user(
             owner_id=user.id,
         )
         db.add(ws)
-        ensure_free_subscription(user.id, ws.id, db)
+        ensure_free_subscription(db, ws.id)
         db.commit()
 
     return user

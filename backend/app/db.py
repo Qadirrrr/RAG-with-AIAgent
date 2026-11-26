@@ -44,10 +44,10 @@ PLANS = {
     "free": {
         "name": "Free",
         "price_usd": 0,
-        "monthly_message_limit": 100,
-        "agent_limit": 1,
-        "document_limit": 5,
-        "description": "Try one agent with a small knowledge base.",
+        "monthly_message_limit": 999999,
+        "agent_limit": 999,
+        "document_limit": 999999,
+        "description": "Single-tenant unlimited self-hosted plan.",
     },
     "starter": {
         "name": "Starter",
