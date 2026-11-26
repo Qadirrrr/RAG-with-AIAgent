@@ -97,7 +97,7 @@ class VectorStoreService:
     def __init__(self):
         self.persist_directory = os.path.abspath(settings.CHROMA_PERSIST_DIRECTORY)
         os.makedirs(self.persist_directory, exist_ok=True)
-        self.collection_name = "rag_documents"
+        self.collection_name = "rag_knowledge_v1"
         self._vector_store: Optional[Chroma] = None
         self._embeddings: Optional[Any] = None
         self._cached_provider: Optional[str] = None
@@ -131,7 +131,22 @@ class VectorStoreService:
         if vector_store is None:
             raise ValueError("Embeddings are not available. Please check that Ollama is running on the server and that the embedding model is pulled (ollama pull bge-m3).")
         
-        vector_store.add_documents(documents)
+        try:
+            vector_store.add_documents(documents)
+        except Exception as e:
+            if "dimension" in str(e).lower():
+                # Stale collection created with older embedding model dimension (e.g. 3072 vs 1024)
+                # Auto-reset collection to match current bge-m3 model
+                try:
+                    client = chromadb.PersistentClient(path=self.persist_directory)
+                    client.delete_collection(name=self.collection_name)
+                except Exception:
+                    pass
+                self._vector_store = None
+                fresh_store = self.get_vector_store()
+                fresh_store.add_documents(documents)
+            else:
+                raise e
         return len(documents)
 
     def delete_by_metadata(self, key: str, value: str) -> bool:
