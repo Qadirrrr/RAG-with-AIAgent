@@ -90,8 +90,12 @@ export default function Playground() {
       }]);
       load();
     } catch (err) {
-      setError(apiError(err, 'Failed to get a response from the agent.'));
-      setMessages((prev) => [...prev, { role: 'assistant', content: `Failed to get a response: ${apiError(err)}`, timestamp: new Date().toISOString() }]);
+      const isTimeout = err.code === 'ECONNABORTED' || (err.message || '').toLowerCase().includes('timeout');
+      const friendlyMsg = isTimeout
+        ? 'The assistant is taking longer than expected. Please try again in a moment.'
+        : apiError(err, 'Something went wrong. Please try again.');
+      setError(friendlyMsg);
+      setMessages((prev) => [...prev, { role: 'assistant', content: friendlyMsg, timestamp: new Date().toISOString() }]);
     } finally { setSending(false); }
   };
 

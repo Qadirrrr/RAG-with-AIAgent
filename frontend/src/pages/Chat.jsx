@@ -70,12 +70,15 @@ export default function Chat() {
 
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err) {
-      const errorDetail = err.response?.data?.detail || err.message || 'Error communicating with the chatbot.';
-      setError(errorDetail);
-      
+      const isTimeout = err.code === 'ECONNABORTED' || (err.message || '').toLowerCase().includes('timeout');
+      const friendlyMsg = isTimeout
+        ? 'The assistant is taking longer than expected. Please try again in a moment.'
+        : (err.response?.data?.detail || 'Something went wrong. Please try again.');
+      setError(friendlyMsg);
+
       const errorMsg = {
         role: 'assistant',
-        content: `Failed to get a response: ${errorDetail}`,
+        content: friendlyMsg,
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMsg]);

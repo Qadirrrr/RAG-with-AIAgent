@@ -100,10 +100,22 @@ def resolve_chat_model(model: Optional[str]) -> str:
 
 
 _META_PREFIX_RE = re.compile(
-    r"^\s*(?:based on|according to|from|per|using|in)\s+(?:the\s+|my\s+)?(?:(?:provided|given|available|above|shared|uploaded|stored)\s+)*(?:knowledge(?:\s+base)?|reference(?:\s+information)?|information|context|data|facts|details|document|documents|text|source|sources)(?:\s+(?:provided|above|given|available))?\s*[,:\-–—]?\s*",
+    r"^\s*(?:"
+    r"based\s+on|according\s+to|from|per|using|in|as\s+per|drawing\s+from|referring\s+to"
+    r")\s+(?:the\s+|my\s+|your\s+)?(?:"
+    r"(?:provided|given|available|above|shared|uploaded|stored|following)\s+"
+    r")*(?:"
+    r"knowledge(?:\s+base)?|reference(?:\s+information)?|information|context|data|"
+    r"facts|details|document|documents|text|source|sources|resume|cv|profile"
+    r")(?:\s+(?:provided|above|given|available|shared))?\s*[,:\-\u2013\u2014]?\s*",
     re.IGNORECASE,
 )
 _INLINE_SOURCE_RE = re.compile(r"\s*[\(\[]\s*Source\s*:[^\)\]]+[\)\]]", re.IGNORECASE)
+# Catch any remaining sentence that starts with a meta-disclosure phrase
+_META_SENTENCE_RE = re.compile(
+    r"^(?:based\s+on\s+(?:the\s+)?(?:provided|given|available|above)?\s*(?:knowledge|information|context|document|data|facts)[^,\n]*[,\n]\s*)",
+    re.IGNORECASE,
+)
 
 
 def clean_answer_text(text: str) -> str:
@@ -111,12 +123,14 @@ def clean_answer_text(text: str) -> str:
     if not text:
         return text
     cleaned = _INLINE_SOURCE_RE.sub("", text)
-    # Strip up to two chained meta-prefixes if present
-    for _ in range(2):
+    # Strip up to three chained meta-prefixes if present
+    for _ in range(3):
         next_cleaned = _META_PREFIX_RE.sub("", cleaned, count=1).lstrip()
         if next_cleaned == cleaned:
             break
         cleaned = next_cleaned
+    # Also strip trailing sentence-level disclosure that starts the response
+    cleaned = _META_SENTENCE_RE.sub("", cleaned).lstrip()
     if cleaned and cleaned[0].islower():
         cleaned = cleaned[0].upper() + cleaned[1:]
     return cleaned.strip() or text.strip()
@@ -256,7 +270,7 @@ class RAGAgentService:
         lang_note = f"Answer in {language}." if language else ""
         custom = f"\nAgent instructions: {instructions}" if instructions else ""
         if mode == "agent":
-            custom += "\nYou may reason step by step over the knowledge before answering."
+            custom += "\nReason through the question step by step before answering."
         if context_parts:
             context_text = "\n\n".join(context_parts)
             system_prompt = (
@@ -267,8 +281,8 @@ class RAGAgentService:
                 "1. Answer the question accurately using the Facts provided below. Carefully read all Facts and connect related details (including related terms or headings) to give a complete, helpful answer.\n"
                 "2. Include exact names, numbers, dates, prices, skills, and details from the Facts.\n"
                 "3. Do not invent facts outside the provided information. Only say 'I do not have that information.' if the Facts are completely unrelated to the question.\n"
-                "4. Answer directly, naturally, and professionally — as if you already know these facts.\n"
-                "5. NEVER say 'based on', 'according to', 'provided knowledge', 'reference', 'context', 'document', or 'source'. Start directly with the answer.\n"
+                "4. Answer directly and professionally — as if you already know these facts personally.\n"
+                "5. CRITICAL: NEVER start your answer with 'Based on', 'According to', 'From the', 'Using the', 'In the', 'Per the', or any similar phrase referencing knowledge, documents, context, or sources. Just answer directly.\n"
                 "6. Format cleanly with short paragraphs or bullet points."
             )
             user_prompt = f"Facts:\n{context_text}\n\nQuestion:\n{question}"
