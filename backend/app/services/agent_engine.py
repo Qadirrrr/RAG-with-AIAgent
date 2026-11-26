@@ -285,7 +285,7 @@ async def run_agent_answer(llm, question: str, history: Optional[List[Dict[str, 
         "2. Include specific numbers, names, dates, pricing, and requirements directly from the knowledge.\n"
         "3. If the provided KNOWLEDGE does not answer the question and knowledge_search returns no relevant information, politely state: 'I apologize, but I do not have that specific information in my knowledge base.' Do NOT make up or guess an answer.\n"
         "4. Use calculator for arithmetic and current_datetime for date or time questions, and list_documents when asked which documents are available.\n"
-        "5. Never mention meta-phrases such as 'according to the document', 'source', or 'as stated in'. Answer authoritatively and naturally.\n"
+        "5. NEVER start with or include phrases like 'Based on the provided knowledge', 'Based on the information provided', 'According to the knowledge', 'According to the document', 'source', or 'as stated in'. Answer directly, naturally, and professionally.\n"
         "6. Be concise, direct, and prompt. Format with clean paragraphs or bullet points."
     )
 
@@ -299,7 +299,7 @@ async def run_agent_answer(llm, question: str, history: Optional[List[Dict[str, 
             elif msg.get("role") == "assistant":
                 messages.append(AIMessage(content=msg.get("content", "")))
     if pre_context:
-        messages.append(HumanMessage(content=f"KNOWLEDGE:\n{pre_context}\n\nUSER QUESTION:\n{question}"))
+        messages.append(HumanMessage(content=f"Reference Information:\n{pre_context}\n\nQuestion:\n{question}"))
     else:
         messages.append(HumanMessage(content=question))
 
@@ -311,15 +311,18 @@ async def run_agent_answer(llm, question: str, history: Optional[List[Dict[str, 
         timeout=AGENT_TIMEOUT_SECONDS,
     )
 
+    from app.services.rag_agent import clean_meta_prefix
+
     output_text = ""
     out_messages = result.get("messages") if isinstance(result, dict) else None
     if out_messages:
         output_text = _extract_text(out_messages[-1].content)
-    if not output_text.strip():
+    output_text = clean_meta_prefix(output_text.strip())
+    if not output_text:
         output_text = "I do not have that information."
 
     return ChatResponse(
-        response=output_text.strip(),
+        response=output_text,
         sources=state["sources"] if show_citations else [],
         agent_steps=[],
     )

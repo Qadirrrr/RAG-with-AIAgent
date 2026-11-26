@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import time
 from typing import List, Dict, Any, Optional, Set
 
@@ -96,6 +97,22 @@ def resolve_chat_model(model: Optional[str]) -> str:
     if _is_pulled(default, pulled):
         return default
     return requested
+
+
+_META_PREFIX_RE = re.compile(
+    r"^\s*(?:based on|according to|from|per)\s+(?:the\s+)?(?:provided\s+|given\s+|available\s+)?(?:knowledge|information|context|data|document|documents|text|source|sources)(?:\s+base|\s+provided)?\s*[,:\-–—]?\s*",
+    re.IGNORECASE,
+)
+
+
+def clean_meta_prefix(text: str) -> str:
+    """Strip robotic lead-ins like 'Based on the provided KNOWLEDGE, '."""
+    if not text:
+        return text
+    cleaned = _META_PREFIX_RE.sub("", text, count=1).lstrip()
+    if cleaned and cleaned[0].islower():
+        cleaned = cleaned[0].upper() + cleaned[1:]
+    return cleaned or text
 
 
 class RAGAgentService:
@@ -240,10 +257,10 @@ class RAGAgentService:
                 "2. If the user's question cannot be completely answered from the provided KNOWLEDGE, politely state: 'I apologize, but I do not have that specific information in my knowledge base.' Never hallucinate or guess.\n"
                 "3. Provide precise, specific details (such as names, numbers, dates, pricing, technical specifications, and steps) directly from the knowledge.\n"
                 "4. Be concise, direct, and prompt. Avoid conversational filler, unnecessary apologies, or repeating the question.\n"
-                "5. Never mention meta-terms such as 'according to the document', 'the provided text', 'source context', or 'uploaded file'. Answer authoritatively and naturally.\n"
+                "5. NEVER start with or include phrases like 'Based on the provided knowledge', 'Based on the information provided', 'According to the knowledge', 'According to the document', 'the provided text', or 'from the source'. Answer directly, naturally, and professionally.\n"
                 "6. Format with clean, readable structure (bullet points, clear paragraphs)."
             )
-            user_prompt = f"KNOWLEDGE:\n{context_text}\n\nUSER QUESTION:\n{question}"
+            user_prompt = f"Reference Information:\n{context_text}\n\nQuestion:\n{question}"
         else:
             system_prompt = (
                 f"You are {agent_name}, a professional AI assistant.{custom}\n"
@@ -282,7 +299,8 @@ class RAGAgentService:
                         parts.append(p)
                 output_text = "\n".join(parts) if parts else str(result.content)
 
-            if not output_text.strip():
+            output_text = clean_meta_prefix(output_text.strip())
+            if not output_text:
                 output_text = "I do not have that information."
 
             if not agent_id:
@@ -290,7 +308,7 @@ class RAGAgentService:
                 storage_service.log_activity("chat", f"Asked: {question[:50]}...", "Answered")
 
             return ChatResponse(
-                response=output_text.strip(),
+                response=output_text,
                 sources=sources if show_citations else [],
                 agent_steps=[]
             )
