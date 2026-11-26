@@ -117,6 +117,7 @@ export const apiService = {
   // API keys
   getApiKeys: async (ws, agentId) => normalizeList((await apiClient.get(`/api/workspaces/${ws}/agents/${agentId}/api-keys`)).data, ['api_keys', 'keys']),
   createApiKey: async (ws, agentId, payload) => (await apiClient.post(`/api/workspaces/${ws}/agents/${agentId}/api-keys`, payload)).data,
+  revealApiKey: async (ws, agentId, keyId) => (await apiClient.get(`/api/workspaces/${ws}/agents/${agentId}/api-keys/${keyId}/reveal`)).data,
   deleteApiKey: async (ws, agentId, keyId) => (await apiClient.delete(`/api/workspaces/${ws}/agents/${agentId}/api-keys/${keyId}`)).data,
 
   // Plans and billing

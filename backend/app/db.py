@@ -207,6 +207,10 @@ class ApiKey(Base):
     workspace_id = Column(String(64), ForeignKey("workspaces.id"), nullable=False, index=True)
     agent_id = Column(String(64), ForeignKey("agents.id"), nullable=False, index=True)
     key_hash = Column(String(128), nullable=False, index=True)
+    # Fernet-encrypted copy of the full key, only so the owner can view
+    # and copy it later (see app/services/key_vault.py). Auth uses
+    # key_hash alone. NULL for keys created before this column existed.
+    key_encrypted = Column(Text, nullable=True)
     prefix = Column(String(32), nullable=False)
     name = Column(String(255), default="Default", nullable=False)
     last_used_at = Column(DateTime, nullable=True)
@@ -245,6 +249,7 @@ def init_db():
             os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     Base.metadata.create_all(bind=engine)
     _migrate_agent_columns()
+    _migrate_api_key_columns()
 
 
 # Columns added to the agents table after the first release. Existing
@@ -280,6 +285,27 @@ def _migrate_agent_columns():
             rendered = ddl.format(true="1" if is_sqlite else "TRUE",
                                   false="0" if is_sqlite else "FALSE")
             conn.execute(text(f"ALTER TABLE agents ADD COLUMN {name} {rendered}"))
+
+
+# Columns added to the api_keys table after the first release, added to
+# existing databases the same way as the agent columns above.
+_API_KEY_COLUMN_DDL = {
+    "key_encrypted": "TEXT",
+}
+
+
+def _migrate_api_key_columns():
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(engine)
+    if "api_keys" not in inspector.get_table_names():
+        return
+    existing = {c["name"] for c in inspector.get_columns("api_keys")}
+    with engine.begin() as conn:
+        for name, ddl in _API_KEY_COLUMN_DDL.items():
+            if name in existing:
+                continue
+            conn.execute(text(f"ALTER TABLE api_keys ADD COLUMN {name} {ddl}"))
 
 
 def ensure_free_subscription(db, workspace_id: str) -> Subscription:

@@ -1097,3 +1097,49 @@ def test_similarity_search_without_chunk_index_returns_plain_hit():
     finally:
         if original is not None:
             _restore_marker_store(agent_id, original)
+
+
+def test_api_key_reveal_returns_full_key_and_list_stays_masked(client):
+    h, ws_id, agent, raw_key = _agent_with_key(client, "reveal@example.com")
+    base = f"/api/workspaces/{ws_id}/agents/{agent['id']}/api-keys"
+    r = client.get(base, headers=h)
+    assert r.status_code == 200, r.text
+    keys = r.json()
+    assert len(keys) == 1
+    # The list response must never carry the full secret.
+    assert raw_key not in r.text
+    assert "api_key" not in keys[0]
+    r = client.get(f"{base}/{keys[0]['id']}/reveal", headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json()["api_key"] == raw_key
+
+
+def test_api_key_reveal_other_workspace_and_missing_key_return_404(client):
+    h, ws_id, agent, _ = _agent_with_key(client, "reveal-guard@example.com")
+    base = f"/api/workspaces/{ws_id}/agents/{agent['id']}/api-keys"
+    key_id = client.get(base, headers=h).json()[0]["id"]
+    r = client.post("/api/workspaces", headers=h, json={"name": "Other Project"})
+    assert r.status_code == 200, r.text
+    ws2 = r.json()["id"]
+    r = client.get(f"/api/workspaces/{ws2}/agents/{agent['id']}/api-keys/{key_id}/reveal", headers=h)
+    assert r.status_code == 404, r.text
+    r = client.get(f"{base}/no-such-key-id/reveal", headers=h)
+    assert r.status_code == 404, r.text
+
+
+def test_api_key_reveal_legacy_key_without_encrypted_copy_returns_404(client):
+    from app.db import ApiKey, SessionLocal
+
+    h, ws_id, agent, _ = _agent_with_key(client, "reveal-legacy@example.com")
+    base = f"/api/workspaces/{ws_id}/agents/{agent['id']}/api-keys"
+    key_id = client.get(base, headers=h).json()[0]["id"]
+    db = SessionLocal()
+    try:
+        row = db.query(ApiKey).filter(ApiKey.id == key_id).first()
+        row.key_encrypted = None
+        db.commit()
+    finally:
+        db.close()
+    r = client.get(f"{base}/{key_id}/reveal", headers=h)
+    assert r.status_code == 404, r.text
+    assert "created before key viewing was enabled" in r.json()["detail"]

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plug, Key, Copy, Check, Trash2, Plus, Loader2 } from 'lucide-react';
+import { Plug, Key, Copy, Check, Trash2, Plus, Loader2, Eye, EyeOff } from 'lucide-react';
 import apiService, { apiError, API_BASE_URL } from '../services/api';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { Spinner, ErrorBox, EmptyState, inputCls, labelCls, btnPrimary } from '../components/ui';
@@ -15,6 +15,8 @@ export default function Integrations() {
   const [creating, setCreating] = useState(false);
   const [newKey, setNewKey] = useState(null);
   const [copied, setCopied] = useState(null);
+  const [revealedKeys, setRevealedKeys] = useState({});
+  const [keyErrors, setKeyErrors] = useState({});
 
   const loadAgents = useCallback(async () => {
     if (!selectedId) { setLoading(false); return; }
@@ -31,6 +33,8 @@ export default function Integrations() {
 
   const loadKeys = useCallback(async () => {
     if (!selectedId || !agentId) { setKeys([]); return; }
+    setRevealedKeys({});
+    setKeyErrors({});
     try { setKeys(await apiService.getApiKeys(selectedId, agentId)); }
     catch (err) { setError(apiError(err, 'Could not load API keys.')); }
   }, [selectedId, agentId]);
@@ -58,6 +62,31 @@ export default function Integrations() {
     } catch (err) {
       setError(apiError(err, 'Could not create API key.'));
     } finally { setCreating(false); }
+  };
+
+  const fetchRevealedKey = async (key) => {
+    if (revealedKeys[key.id]) return revealedKeys[key.id];
+    const data = await apiService.revealApiKey(selectedId, agentId, key.id);
+    const full = data.api_key || data.key || '';
+    setRevealedKeys((prev) => ({ ...prev, [key.id]: full }));
+    setKeyErrors((prev) => ({ ...prev, [key.id]: null }));
+    return full;
+  };
+
+  const toggleRevealKey = async (key) => {
+    if (revealedKeys[key.id]) {
+      setRevealedKeys((prev) => { const next = { ...prev }; delete next[key.id]; return next; });
+      return;
+    }
+    try { await fetchRevealedKey(key); }
+    catch (err) { setKeyErrors((prev) => ({ ...prev, [key.id]: apiError(err, 'Could not show this key.') })); }
+  };
+
+  const copyKey = async (key) => {
+    try {
+      const full = await fetchRevealedKey(key);
+      if (full) await copy(full, `key-${key.id}`);
+    } catch (err) { setKeyErrors((prev) => ({ ...prev, [key.id]: apiError(err, 'Could not copy this key.') })); }
   };
 
   const deleteKey = async (key) => {
@@ -154,10 +183,10 @@ print("Conversation ID:", data["conversation_id"])`;
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6">
         <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Key className="w-4 h-4 text-teal-600" /> API keys</h3>
-        <p className="text-sm text-slate-500 mt-1">Keys are shown in full only once, right after creation. Store them safely.</p>
+        <p className="text-sm text-slate-500 mt-1">Use the eye button to view a key and the copy button to copy it. Keys created before viewing was enabled cannot be shown, create a new key for those. Keep your keys safe and never share them publicly.</p>
         {newKey && (
           <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
-            <p className="text-xs font-semibold text-emerald-800 mb-2">Your new API key (copy it now, it will not be shown again):</p>
+            <p className="text-xs font-semibold text-emerald-800 mb-2">Your new API key. You can also view and copy it any time from the list below:</p>
             <div className="flex items-center gap-2">
               <code className="flex-1 bg-white border border-emerald-200 rounded-lg px-3 py-2 text-sm break-all">{newKey}</code>
               <button onClick={() => copy(newKey, 'newkey')} className={btnPrimary + ' !px-3 !py-2 text-xs'}>{copied === 'newkey' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied === 'newkey' ? 'Copied' : 'Copy'}</button>
@@ -173,12 +202,20 @@ print("Conversation ID:", data["conversation_id"])`;
         ) : (
           <ul className="divide-y divide-slate-100 mt-4">
             {keys.map((k) => (
-              <li key={k.id} className="py-3 flex items-center gap-3">
-                <Key className="w-4 h-4 text-slate-400 shrink-0" />
+              <li key={k.id} className="py-3 flex items-start gap-3">
+                <Key className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-slate-800 truncate">{k.name || 'API key'}</p>
                   <p className="text-xs text-slate-500 font-mono">{k.prefix || k.key_prefix || ''}... {k.created_at ? ` / ${new Date(k.created_at).toLocaleDateString()}` : ''}</p>
+                  {revealedKeys[k.id] && (
+                    <p className="text-xs text-slate-700 font-mono break-all mt-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">{revealedKeys[k.id]}</p>
+                  )}
+                  {keyErrors[k.id] && (
+                    <p className="text-xs text-rose-600 mt-1.5">{keyErrors[k.id]}</p>
+                  )}
                 </div>
+                <button onClick={() => toggleRevealKey(k)} title={revealedKeys[k.id] ? 'Hide key' : 'Show key'} className="p-2 rounded-lg text-slate-400 hover:text-teal-700 hover:bg-teal-50">{revealedKeys[k.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+                <button onClick={() => copyKey(k)} title="Copy key" className="p-2 rounded-lg text-slate-400 hover:text-teal-700 hover:bg-teal-50">{copied === `key-${k.id}` ? <Check className="w-4 h-4 text-teal-600" /> : <Copy className="w-4 h-4" />}</button>
                 <button onClick={() => deleteKey(k)} title="Revoke key" className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"><Trash2 className="w-4 h-4" /></button>
               </li>
             ))}
