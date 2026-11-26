@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plug, Key, Copy, Check, Trash2, Plus, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Key, Copy, Check, Trash2, Plus, Loader2, Code2, Bot } from 'lucide-react';
 import apiService, { apiError, API_BASE_URL } from '../services/api';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { Spinner, ErrorBox, EmptyState, inputCls, labelCls, btnPrimary } from '../components/ui';
@@ -13,13 +13,14 @@ export default function Integrations() {
   const [error, setError] = useState(null);
   const [keyName, setKeyName] = useState('');
   const [creating, setCreating] = useState(false);
-  const [newKey, setNewKey] = useState(null);
   const [copied, setCopied] = useState(null);
   const [revealedKeys, setRevealedKeys] = useState({});
-  const [keyErrors, setKeyErrors] = useState({});
 
   const loadAgents = useCallback(async () => {
-    if (!selectedId) { setLoading(false); return; }
+    if (!selectedId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -28,86 +29,139 @@ export default function Integrations() {
       if (list.length > 0) setAgentId((prev) => prev || list[0].id);
     } catch (err) {
       setError(apiError(err, 'Could not load chatbots.'));
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }, [selectedId]);
 
   const loadKeys = useCallback(async () => {
-    if (!selectedId || !agentId) { setKeys([]); return; }
-    setRevealedKeys({});
-    setKeyErrors({});
-    try { setKeys(await apiService.getApiKeys(selectedId, agentId)); }
-    catch (err) { setError(apiError(err, 'Could not load API keys.')); }
+    if (!selectedId || !agentId) {
+      setKeys([]);
+      return;
+    }
+    try {
+      const list = await apiService.getApiKeys(selectedId, agentId);
+      setKeys(list || []);
+
+      // Auto-reveal all keys so they are permanently visible across page refreshes
+      for (const k of list || []) {
+        try {
+          const data = await apiService.revealApiKey(selectedId, agentId, k.id);
+          const full = data.api_key || data.key || '';
+          if (full) {
+            setRevealedKeys((prev) => ({ ...prev, [k.id]: full }));
+          }
+        } catch (_) {}
+      }
+    } catch (err) {
+      setError(apiError(err, 'Could not load API keys.'));
+    }
   }, [selectedId, agentId]);
 
-  useEffect(() => { loadAgents(); }, [loadAgents]);
-  useEffect(() => { loadKeys(); }, [loadKeys]);
+  useEffect(() => {
+    loadAgents();
+  }, [loadAgents]);
+
+  useEffect(() => {
+    loadKeys();
+  }, [loadKeys]);
 
   const copy = async (text, id) => {
-    try { await navigator.clipboard.writeText(text); } catch { /* clipboard unavailable */ }
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // fallback
+    }
     setCopied(id);
     setTimeout(() => setCopied(null), 2000);
   };
 
   const createKey = async (e) => {
     e.preventDefault();
-    if (!keyName.trim()) { setError('Give the API key a name first.'); return; }
-    setCreating(true);
-    setError(null);
-    setNewKey(null);
-    try {
-      const created = await apiService.createApiKey(selectedId, agentId, { name: keyName.trim() });
-      if (created.key) setNewKey(created.key);
-      setKeyName('');
-      loadKeys();
-    } catch (err) {
-      setError(apiError(err, 'Could not create API key.'));
-    } finally { setCreating(false); }
-  };
-
-  const fetchRevealedKey = async (key) => {
-    if (revealedKeys[key.id]) return revealedKeys[key.id];
-    const data = await apiService.revealApiKey(selectedId, agentId, key.id);
-    const full = data.api_key || data.key || '';
-    setRevealedKeys((prev) => ({ ...prev, [key.id]: full }));
-    setKeyErrors((prev) => ({ ...prev, [key.id]: null }));
-    return full;
-  };
-
-  const toggleRevealKey = async (key) => {
-    if (revealedKeys[key.id]) {
-      setRevealedKeys((prev) => { const next = { ...prev }; delete next[key.id]; return next; });
+    if (!keyName.trim()) {
+      setError('Give the API key a name first.');
       return;
     }
-    try { await fetchRevealedKey(key); }
-    catch (err) { setKeyErrors((prev) => ({ ...prev, [key.id]: apiError(err, 'Could not show this key.') })); }
-  };
-
-  const copyKey = async (key) => {
+    setCreating(true);
+    setError(null);
     try {
-      const full = await fetchRevealedKey(key);
-      if (full) await copy(full, `key-${key.id}`);
-    } catch (err) { setKeyErrors((prev) => ({ ...prev, [key.id]: apiError(err, 'Could not copy this key.') })); }
+      const created = await apiService.createApiKey(selectedId, agentId, {
+        name: keyName.trim(),
+      });
+      const raw = created.api_key || created.key;
+      if (raw && created.id) {
+        setRevealedKeys((prev) => ({ ...prev, [created.id]: raw }));
+      }
+      setKeyName('');
+      await loadKeys();
+    } catch (err) {
+      setError(apiError(err, 'Could not create API key.'));
+    } finally {
+      setCreating(false);
+    }
   };
 
   const deleteKey = async (key) => {
-    if (!window.confirm(`Revoke API key "${key.name || key.prefix}"? Existing integrations using it will stop working.`)) return;
-    try { await apiService.deleteApiKey(selectedId, agentId, key.id); loadKeys(); }
-    catch (err) { setError(apiError(err, 'Could not delete API key.')); }
+    if (
+      !window.confirm(
+        `Delete API key "${key.name || key.prefix}"? The website widget using this key will stop working.`
+      )
+    )
+      return;
+    try {
+      await apiService.deleteApiKey(selectedId, agentId, key.id);
+      setRevealedKeys((prev) => {
+        const next = { ...prev };
+        delete next[key.id];
+        return next;
+      });
+      loadKeys();
+    } catch (err) {
+      setError(apiError(err, 'Could not delete API key.'));
+    }
   };
 
   if (loading) return <Spinner label="Loading integrations..." />;
-  if (!selectedId) return <EmptyState icon={Plug} title="No workspace selected" text="Select a workspace from the sidebar to manage integrations." />;
-  if (agents.length === 0) return <EmptyState icon={Plug} title="No chatbots yet" text="Create a chatbot first, then come back here to get its website widget and API key." />;
+  if (!selectedId)
+    return (
+      <EmptyState
+        icon={Code2}
+        title="No project selected"
+        text="Select a project to manage integrations."
+      />
+    );
+  if (agents.length === 0)
+    return (
+      <EmptyState
+        icon={Bot}
+        title="No chatbots created yet"
+        text="Create a chatbot first, then come back here to get its website widget and API key."
+      />
+    );
 
   const selectedAgent = agents.find((a) => String(a.id) === String(agentId));
-  const serverUrl = (typeof window !== 'undefined' && window.location.origin) ? window.location.origin : (API_BASE_URL || 'http://localhost:8000');
-  const widgetSnippet = `<script src="${serverUrl}/widget.js" data-agent-key="YOUR_API_KEY" data-api-url="${serverUrl}"></script>`;
-  const curlExample = `curl -X POST ${serverUrl}/api/public/chat \\\n  -H "Content-Type: application/json" \\\n  -H "X-Agent-Key: YOUR_API_KEY" \\\n  -d '{"message": "Hello, what are your opening hours?"}'`;
+  const serverUrl =
+    typeof window !== 'undefined' && window.location.origin
+      ? window.location.origin
+      : API_BASE_URL || 'http://localhost:8000';
+
+  // Find active key string to automatically populate in the script snippet
+  const activeKeyStr =
+    (keys[0] && revealedKeys[keys[0].id]) ||
+    (keys[0] && keys[0].prefix ? `${keys[0].prefix}...` : 'YOUR_API_KEY');
+
+  const widgetSnippet = `<script src="${serverUrl}/widget.js" data-agent-key="${activeKeyStr}" data-api-url="${serverUrl}"></script>`;
+
+  const curlExample = `curl -X POST ${serverUrl}/api/public/chat \\
+  -H "Content-Type: application/json" \\
+  -H "X-Agent-Key: ${activeKeyStr}" \\
+  -d '{"message": "Hello, what are your opening hours?"}'`;
+
   const pythonExample = `import requests
 
 response = requests.post(
     "${serverUrl}/api/public/chat",
-    headers={"X-Agent-Key": "YOUR_API_KEY"},
+    headers={"X-Agent-Key": "${activeKeyStr}"},
     json={"message": "What are your opening hours?"},
     timeout=60,
 )
@@ -115,115 +169,178 @@ response.raise_for_status()
 data = response.json()
 print(data["response"])
 print("Conversation ID:", data["conversation_id"])`;
-  const responseExample = `{
-  "conversation_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-  "response": "We are open Monday to Saturday, 9 AM to 6 PM.",
-  "sources": [],
-  "agent_steps": []
-}`;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl mx-auto">
       <div>
-        <h2 className="text-2xl font-extrabold text-slate-900">Add to your website</h2>
-        <p className="text-sm text-slate-500 mt-1">Pick a chatbot, create its API key, and paste the widget code on your website. The chatbot answers only from that chatbot's own documents and website data, never from another chatbot or project.</p>
+        <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
+          Website Widget & API Integration
+        </h1>
+        <p className="text-sm text-slate-500 mt-1">
+          Generate API keys and embed code. Paste the widget script on any website to deploy your chatbot.
+        </p>
       </div>
+
       <ErrorBox message={error} onRetry={loadAgents} />
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-6">
-        <label className={labelCls}>Chatbot</label>
-        <select className={inputCls + ' max-w-md'} value={agentId} onChange={(e) => setAgentId(e.target.value)}>
-          {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+      {/* Select Chatbot */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs">
+        <label className={labelCls}>Select Chatbot</label>
+        <select
+          className={inputCls + ' max-w-md'}
+          value={agentId}
+          onChange={(e) => setAgentId(e.target.value)}
+        >
+          {agents.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name} ({a.model || 'qwen2.5:7b'})
+            </option>
+          ))}
         </select>
-        {selectedAgent && <p className="text-xs text-slate-500 mt-2">{selectedAgent.provider || ''} {selectedAgent.model ? `/ ${selectedAgent.model}` : ''}</p>}
-        {selectedAgent && <p className="text-xs text-teal-700 mt-1">This chatbot answers only from its own documents. Add or change its data on its Knowledge page.</p>}
+        {selectedAgent && (
+          <p className="text-xs text-teal-700 font-medium mt-2">
+            Selected bot: <strong>{selectedAgent.name}</strong> — answers strictly from its own
+            uploaded knowledge documents.
+          </p>
+        )}
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-6">
-        <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Key className="w-4 h-4 text-teal-600" /> API keys</h3>
-        <p className="text-sm text-slate-500 mt-1">Use the eye button to view a key and the copy button to copy it. Keys created before viewing was enabled cannot be shown, create a new key for those. Keep your keys safe and never share them publicly.</p>
-        {newKey && (
-          <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
-            <p className="text-xs font-semibold text-emerald-800 mb-2">Your new API key. You can also view and copy it any time from the list below:</p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 bg-white border border-emerald-200 rounded-lg px-3 py-2 text-sm break-all">{newKey}</code>
-              <button onClick={() => copy(newKey, 'newkey')} className={btnPrimary + ' !px-3 !py-2 text-xs'}>{copied === 'newkey' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied === 'newkey' ? 'Copied' : 'Copy'}</button>
-            </div>
+      {/* API Keys Section */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs">
+        <h2 className="text-base font-semibold text-slate-800 flex items-center gap-2">
+          <Key className="w-4 h-4 text-teal-600" /> API Keys (Permanent)
+        </h2>
+        <p className="text-xs text-slate-500 mt-1">
+          Keys stay saved permanently in the database until you explicitly delete them.
+        </p>
+
+        {/* Create Key Form */}
+        <form onSubmit={createKey} className="flex gap-2 mt-4">
+          <input
+            className={inputCls}
+            value={keyName}
+            onChange={(e) => setKeyName(e.target.value)}
+            placeholder="Key name, for example: Production Website Widget"
+          />
+          <button type="submit" disabled={creating} className={btnPrimary + ' shrink-0'}>
+            {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}{' '}
+            Create Key
+          </button>
+        </form>
+
+        {/* Keys List */}
+        {keys.length === 0 ? (
+          <p className="text-xs text-slate-400 mt-4 py-2">
+            No API keys created yet for this chatbot. Create one above to get your embed script.
+          </p>
+        ) : (
+          <div className="divide-y divide-slate-100 mt-4">
+            {keys.map((k) => {
+              const fullKey = revealedKeys[k.id] || k.prefix || 'sk-live-...';
+              return (
+                <div key={k.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-slate-800">{k.name || 'API Key'}</p>
+                    <code className="inline-block mt-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-teal-800 font-mono break-all select-all">
+                      {fullKey}
+                    </code>
+                    <span className="block text-[11px] text-slate-400 mt-0.5">
+                      Created: {k.created_at ? new Date(k.created_at).toLocaleDateString() : 'Active'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => copy(fullKey, `key-${k.id}`)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg border border-slate-200 transition-colors"
+                      title="Copy Key"
+                    >
+                      {copied === `key-${k.id}` ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                      <span>{copied === `key-${k.id}` ? 'Copied' : 'Copy'}</span>
+                    </button>
+                    <button
+                      onClick={() => deleteKey(k)}
+                      title="Delete key"
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
-        <form onSubmit={createKey} className="flex gap-2 mt-4">
-          <input className={inputCls} value={keyName} onChange={(e) => setKeyName(e.target.value)} placeholder="Key name, for example Website widget" />
-          <button type="submit" disabled={creating} className={btnPrimary + ' shrink-0'}>{creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Create key</button>
-        </form>
-        {keys.length === 0 ? (
-          <p className="text-sm text-slate-500 mt-4">No API keys yet for this chatbot.</p>
-        ) : (
-          <ul className="divide-y divide-slate-100 mt-4">
-            {keys.map((k) => (
-              <li key={k.id} className="py-3 flex items-start gap-3">
-                <Key className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-800 truncate">{k.name || 'API key'}</p>
-                  <p className="text-xs text-slate-500 font-mono">{k.prefix || k.key_prefix || ''}... {k.created_at ? ` / ${new Date(k.created_at).toLocaleDateString()}` : ''}</p>
-                  {revealedKeys[k.id] && (
-                    <p className="text-xs text-slate-700 font-mono break-all mt-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">{revealedKeys[k.id]}</p>
-                  )}
-                  {keyErrors[k.id] && (
-                    <p className="text-xs text-rose-600 mt-1.5">{keyErrors[k.id]}</p>
-                  )}
-                </div>
-                <button onClick={() => toggleRevealKey(k)} title={revealedKeys[k.id] ? 'Hide key' : 'Show key'} className="p-2 rounded-lg text-slate-400 hover:text-teal-700 hover:bg-teal-50">{revealedKeys[k.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
-                <button onClick={() => copyKey(k)} title="Copy key" className="p-2 rounded-lg text-slate-400 hover:text-teal-700 hover:bg-teal-50">{copied === `key-${k.id}` ? <Check className="w-4 h-4 text-teal-600" /> : <Copy className="w-4 h-4" />}</button>
-                <button onClick={() => deleteKey(k)} title="Revoke key" className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"><Trash2 className="w-4 h-4" /></button>
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-6">
-        <h3 className="font-semibold text-slate-800">Website widget</h3>
-        <p className="text-sm text-slate-500 mt-1">Paste this one line before the closing <code className="bg-slate-100 px-1 rounded">&lt;/body&gt;</code> tag on any website. Create an API key below first, then replace YOUR_API_KEY.</p>
-        <div className="relative mt-4">
-          <pre className="bg-slate-900 text-slate-100 text-xs sm:text-sm rounded-xl p-4 overflow-x-auto whitespace-pre-wrap break-all">{widgetSnippet}</pre>
-          <button onClick={() => copy(widgetSnippet, 'widget')} className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
-            {copied === 'widget' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {copied === 'widget' ? 'Copied' : 'Copy'}
+      {/* Website Widget Snippet */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs">
+        <h2 className="text-base font-semibold text-slate-800 flex items-center gap-2">
+          <Code2 className="w-4 h-4 text-teal-600" /> Embed Chatbot on Your Website
+        </h2>
+        <p className="text-xs text-slate-500 mt-1">
+          Paste this single tag right before the closing <code>&lt;/body&gt;</code> tag of your website (WordPress, Shopify, React, HTML).
+        </p>
+
+        <div className="relative mt-3">
+          <pre className="bg-slate-900 text-slate-100 text-xs sm:text-sm rounded-xl p-4 overflow-x-auto whitespace-pre-wrap break-all leading-relaxed font-mono">
+            {widgetSnippet}
+          </pre>
+          <button
+            onClick={() => copy(widgetSnippet, 'widget')}
+            className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+          >
+            {copied === 'widget' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{copied === 'widget' ? 'Copied' : 'Copy Code'}</span>
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-6">
-        <h3 className="font-semibold text-slate-800">REST API</h3>
-        <p className="text-sm text-slate-500 mt-1">Anyone can ask this chatbot a question from their own code. Send a POST request to <code className="bg-slate-100 px-1 rounded">POST {API_BASE_URL}/api/public/chat</code> with your API key in the <code className="bg-slate-100 px-1 rounded">X-Agent-Key</code> header and a JSON body with a <code className="bg-slate-100 px-1 rounded">message</code> field. That is all: your API key is linked to this one chatbot, so no agent ID is needed, and the answer comes only from this chatbot's own documents. To continue the same conversation, send the <code className="bg-slate-100 px-1 rounded">conversation_id</code> from the first response with your next message.</p>
+      {/* REST API Examples */}
+      <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-xs space-y-4">
+        <h2 className="text-base font-semibold text-slate-800">Direct REST API Access</h2>
+        <p className="text-xs text-slate-500">
+          Call the chatbot from your own backend, mobile app, or Python script.
+        </p>
 
-        <p className="text-sm font-semibold text-slate-700 mt-5">Python example</p>
-        <div className="relative mt-2">
-          <pre className="bg-slate-900 text-slate-100 text-xs sm:text-sm rounded-xl p-4 overflow-x-auto whitespace-pre-wrap break-all">{pythonExample}</pre>
-          <button onClick={() => copy(pythonExample, 'python')} className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
-            {copied === 'python' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {copied === 'python' ? 'Copied' : 'Copy'}
-          </button>
+        {/* cURL */}
+        <div>
+          <p className="text-xs font-semibold text-slate-700 mb-1">cURL Example</p>
+          <div className="relative">
+            <pre className="bg-slate-900 text-slate-100 text-xs rounded-xl p-4 overflow-x-auto whitespace-pre-wrap break-all font-mono">
+              {curlExample}
+            </pre>
+            <button
+              onClick={() => copy(curlExample, 'curl')}
+              className="absolute top-3 right-3 flex items-center gap-1 bg-white/10 hover:bg-white/20 text-white text-xs font-medium px-2.5 py-1 rounded-lg"
+            >
+              {copied === 'curl' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copied === 'curl' ? 'Copied' : 'Copy'}</span>
+            </button>
+          </div>
         </div>
 
-        <p className="text-sm font-semibold text-slate-700 mt-5">curl example</p>
-        <div className="relative mt-2">
-          <pre className="bg-slate-900 text-slate-100 text-xs sm:text-sm rounded-xl p-4 overflow-x-auto whitespace-pre-wrap break-all">{curlExample}</pre>
-          <button onClick={() => copy(curlExample, 'curl')} className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
-            {copied === 'curl' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {copied === 'curl' ? 'Copied' : 'Copy'}
-          </button>
+        {/* Python */}
+        <div>
+          <p className="text-xs font-semibold text-slate-700 mb-1">Python Example</p>
+          <div className="relative">
+            <pre className="bg-slate-900 text-slate-100 text-xs rounded-xl p-4 overflow-x-auto whitespace-pre-wrap break-all font-mono">
+              {pythonExample}
+            </pre>
+            <button
+              onClick={() => copy(pythonExample, 'python')}
+              className="absolute top-3 right-3 flex items-center gap-1 bg-white/10 hover:bg-white/20 text-white text-xs font-medium px-2.5 py-1 rounded-lg"
+            >
+              {copied === 'python' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copied === 'python' ? 'Copied' : 'Copy'}</span>
+            </button>
+          </div>
         </div>
-
-        <p className="text-sm font-semibold text-slate-700 mt-5">Response</p>
-        <pre className="bg-slate-900 text-slate-100 text-xs sm:text-sm rounded-xl p-4 overflow-x-auto whitespace-pre-wrap break-all mt-2">{responseExample}</pre>
-        <p className="text-sm text-slate-500 mt-2">The answer text is in the <code className="bg-slate-100 px-1 rounded">response</code> field. <code className="bg-slate-100 px-1 rounded">sources</code> lists the documents used when citations are switched on for this chatbot, otherwise it is empty.</p>
-
-        <p className="text-sm font-semibold text-slate-700 mt-5">Errors</p>
-        <ul className="text-sm text-slate-500 mt-2 space-y-1.5 list-disc list-inside">
-          <li><code className="bg-slate-100 px-1 rounded">401</code> The API key is missing or invalid, or an <code className="bg-slate-100 px-1 rounded">agent_id</code> was sent that does not belong to this key.</li>
-          <li><code className="bg-slate-100 px-1 rounded">403</code> This chatbot is deactivated. Activate it on the Chatbots page to use the API.</li>
-          <li><code className="bg-slate-100 px-1 rounded">422</code> The request body is invalid, for example the <code className="bg-slate-100 px-1 rounded">message</code> field is missing.</li>
-        </ul>
       </div>
-
     </div>
   );
 }

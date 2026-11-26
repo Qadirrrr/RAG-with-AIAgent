@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.db import init_db
-from app.routes import documents, chat, health, stats, auth, workspaces, agents, knowledge, agent_chat, api_keys, analytics, admin, plans, ollama, debug
+from app.routes import documents, chat, health, stats, auth, workspaces, agents, knowledge, agent_chat, api_keys, ollama, debug
 
 # Create tables on import as well as on startup, so TestClient use
 # without a lifespan context manager still has a working database.
@@ -48,9 +48,6 @@ app.include_router(knowledge.router)
 app.include_router(agent_chat.tenant_router)
 app.include_router(agent_chat.public_router)
 app.include_router(api_keys.router)
-app.include_router(analytics.router)
-app.include_router(admin.router)
-app.include_router(plans.router)
 app.include_router(debug.router)
 
 # Alias for /health (in case clients query /health directly without /api prefix)

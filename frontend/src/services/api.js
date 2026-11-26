@@ -48,13 +48,6 @@ export function apiError(err, fallback = 'Request failed. Please try again.') {
   return err?.response?.data?.detail || err?.response?.data?.message || err?.message || fallback;
 }
 
-export const FALLBACK_PLANS = [
-  { id: 'free', name: 'Free', price: 0, currency: 'USD', interval: 'month', agents_limit: 1, messages_limit: 100, documents_limit: 10, features: ['1 AI agent', '100 messages per month', '10 documents', 'Community support'] },
-  { id: 'starter', name: 'Starter', price: 19, currency: 'USD', interval: 'month', agents_limit: 3, messages_limit: 1000, documents_limit: 50, features: ['3 AI agents', '1,000 messages per month', '50 documents', 'Website widget', 'Email support'] },
-  { id: 'pro', name: 'Pro', price: 49, currency: 'USD', interval: 'month', agents_limit: 10, messages_limit: 10000, documents_limit: 200, features: ['10 AI agents', '10,000 messages per month', '200 documents', 'REST API access', 'Analytics', 'Priority support'] },
-  { id: 'scale', name: 'Scale', price: 99, currency: 'USD', interval: 'month', agents_limit: 50, messages_limit: 50000, documents_limit: 1000, features: ['50 AI agents', '50,000 messages per month', '1,000 documents', 'REST API access', 'Advanced analytics', 'Dedicated support'] },
-];
-
 
 
 export const apiService = {
@@ -113,30 +106,11 @@ export const apiService = {
   getConversation: async (ws, id) => (await apiClient.get(`/api/workspaces/${ws}/conversations/${id}`)).data,
   deleteConversation: async (ws, id) => (await apiClient.delete(`/api/workspaces/${ws}/conversations/${id}`)).data,
 
-  // Analytics
-  getAnalytics: async (ws) => (await apiClient.get(`/api/workspaces/${ws}/analytics`)).data,
-  getWorkspaceStats: async (ws) => (await apiClient.get(`/api/workspaces/${ws}/stats`)).data,
-  getWorkspaceDocuments: async (ws) => normalizeList((await apiClient.get(`/api/workspaces/${ws}/documents`)).data, ['documents']),
-
   // API keys
   getApiKeys: async (ws, agentId) => normalizeList((await apiClient.get(`/api/workspaces/${ws}/agents/${agentId}/api-keys`)).data, ['api_keys', 'keys']),
   createApiKey: async (ws, agentId, payload) => (await apiClient.post(`/api/workspaces/${ws}/agents/${agentId}/api-keys`, payload)).data,
   revealApiKey: async (ws, agentId, keyId) => (await apiClient.get(`/api/workspaces/${ws}/agents/${agentId}/api-keys/${keyId}/reveal`)).data,
   deleteApiKey: async (ws, agentId, keyId) => (await apiClient.delete(`/api/workspaces/${ws}/agents/${agentId}/api-keys/${keyId}`)).data,
-
-  // Plans and billing
-  getPlans: async () => {
-    try {
-      return normalizeList((await apiClient.get('/api/plans')).data, ['plans']);
-    } catch {
-      return FALLBACK_PLANS;
-    }
-  },
-  changeSubscription: async (ws, plan) => (await apiClient.post(`/api/workspaces/${ws}/subscription`, { plan })).data,
-
-  // Admin
-  getAdminOverview: async () => (await apiClient.get('/api/admin/overview')).data,
-  getAdminUsers: async () => normalizeList((await apiClient.get('/api/admin/users')).data, ['users']),
 };
 
 export default apiService;
