@@ -218,7 +218,9 @@ class TenantChatResponse(BaseModel):
 
 
 class PublicChatRequest(BaseModel):
-    agent_id: str
+    # agent_id is optional: the API key is already bound to one chatbot,
+    # so callers only send it if they want the extra match check.
+    agent_id: Optional[str] = None
     message: str
     conversation_id: Optional[str] = None
     channel: str = "widget"

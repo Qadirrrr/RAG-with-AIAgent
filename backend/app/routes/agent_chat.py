@@ -142,9 +142,17 @@ def widget_config(request: Request, db: Session = Depends(get_db)):
 @public_router.post("/chat", response_model=TenantChatResponse)
 async def public_chat(payload: PublicChatRequest, request: Request, db: Session = Depends(get_db)):
     api_key = _api_key_or_401(db, request)
-    agent = db.query(Agent).filter(Agent.id == payload.agent_id).first()
-    if not agent or agent.id != api_key.agent_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="API key does not match this agent.")
+    if payload.agent_id:
+        # Caller named a chatbot explicitly: it must be the one this key
+        # belongs to.
+        agent = db.query(Agent).filter(Agent.id == payload.agent_id).first()
+        if not agent or agent.id != api_key.agent_id:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="API key does not match this agent.")
+    else:
+        # No agent_id: the key itself identifies the chatbot.
+        agent = db.query(Agent).filter(Agent.id == api_key.agent_id).first()
+        if not agent:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key.")
     api_key.last_used_at = datetime.now(timezone.utc)
     db.commit()
     sub = ensure_free_subscription(db, agent.workspace_id)

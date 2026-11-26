@@ -152,6 +152,47 @@ def test_public_chat_with_api_key(client):
     assert "response" in r.json()
 
 
+def _agent_with_key(client, email, bot_name="Bot"):
+    token, _ = _auth(client, email)
+    h = {"Authorization": f"Bearer {token}"}
+    ws_id = client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+    agent = client.post(f"/api/workspaces/{ws_id}/agents", headers=h, json={"name": bot_name}).json()
+    raw_key = client.post(f"/api/workspaces/{ws_id}/agents/{agent['id']}/api-keys",
+                          headers=h, json={"name": "Website"}).json()["api_key"]
+    return h, ws_id, agent, raw_key
+
+
+def test_public_chat_without_agent_id_uses_key_agent(client):
+    """The simple contract: key + message only. The key picks the chatbot."""
+    h, ws_id, agent, raw_key = _agent_with_key(client, "mia@example.com")
+    r = client.post("/api/public/chat", headers={"X-Agent-Key": raw_key},
+                    json={"message": "Hello"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert "response" in body
+    assert body["conversation_id"]
+    # The conversation was created for the chatbot the key belongs to.
+    r = client.get(f"/api/workspaces/{ws_id}/conversations", headers=h)
+    assert r.status_code == 200, r.text
+    convs = [c for c in r.json() if c["id"] == body["conversation_id"]]
+    assert len(convs) == 1
+    assert convs[0]["agent_id"] == agent["id"]
+
+
+def test_public_chat_with_wrong_agent_id_returns_401(client):
+    _, _, agent, raw_key = _agent_with_key(client, "noah@example.com")
+    r = client.post("/api/public/chat", headers={"X-Agent-Key": raw_key},
+                    json={"agent_id": "some-other-agent", "message": "Hello"})
+    assert r.status_code == 401, r.text
+    assert "does not match" in r.json()["detail"]
+
+
+def test_public_chat_missing_message_returns_422(client):
+    _, _, agent, raw_key = _agent_with_key(client, "olivia@example.com")
+    r = client.post("/api/public/chat", headers={"X-Agent-Key": raw_key}, json={})
+    assert r.status_code == 422, r.text
+
+
 def test_cross_workspace_access_is_blocked(client):
     token_a, _ = _auth(client, "eve@example.com")
     token_b, _ = _auth(client, "frank@example.com")
@@ -929,3 +970,130 @@ def test_url_ingest_both_paths_empty_returns_400(client, monkeypatch):
     assert r.status_code == 400, r.text
     assert "No readable text found on that page." in r.json()["detail"]
     assert "could not be rendered" in r.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Small-to-big retrieval: neighbour expansion in the tenant vector store.
+# A deterministic embedding makes chunk i the unique best match for a
+# query containing its marker token, so similarity results are stable.
+# ---------------------------------------------------------------------------
+
+class _MarkerEmbeddings:
+    def _vec(self, text):
+        vec = [0.0] * 16
+        for i in range(12):
+            if "marker%02dend" % i in text:
+                vec[i] = 1.0
+        return vec
+
+    def embed_documents(self, texts):
+        return [self._vec(t) for t in texts]
+
+    def embed_query(self, text):
+        return self._vec(text)
+
+
+def _marker_chunks(count=12):
+    from langchain_core.documents import Document
+    return [
+        Document(
+            page_content="section%d marker%02dend filler words for this chunk" % (i, i),
+            metadata={"chunk_index": i},
+        )
+        for i in range(count)
+    ]
+
+
+def _with_marker_store(agent_id, documents, workspace_id="ws-context-test",
+                       document_id="doc-context-test"):
+    """Point the tenant store at marker embeddings and add documents."""
+    original = tenant_vector_store.get_embeddings
+    tenant_vector_store.get_embeddings = lambda: _MarkerEmbeddings()
+    tenant_vector_store.add_documents(agent_id, workspace_id, document_id, documents)
+    return original
+
+
+def _restore_marker_store(agent_id, original):
+    tenant_vector_store.delete_agent_collection(agent_id)
+    tenant_vector_store.get_embeddings = original
+
+
+def test_similarity_search_expands_neighbour_chunks():
+    import uuid
+    from app.config import settings
+
+    agent_id = "ctx-" + uuid.uuid4().hex[:16]
+    old_max = settings.CONTEXT_MAX_CHARS
+    settings.CONTEXT_MAX_CHARS = 10000
+    original = None
+    try:
+        original = _with_marker_store(agent_id, _marker_chunks())
+        results = tenant_vector_store.similarity_search(
+            agent_id, "please find marker05end now", k=1)
+        assert len(results) == 1
+        passage = results[0].page_content
+        # The hit on chunk 5 is expanded to chunks 3..7, in order.
+        positions = [passage.index("section%d " % i) for i in range(3, 8)]
+        assert positions == sorted(positions)
+        # No chunk text is duplicated inside the passage.
+        for i in range(3, 8):
+            assert passage.count("section%d " % i) == 1
+        # Chunks outside the +-2 window are not pulled in.
+        assert "section2 " not in passage
+        assert "section8 " not in passage
+        # Total context respects the configured cap.
+        total = sum(len(d.page_content) for d in results)
+        assert total <= settings.CONTEXT_MAX_CHARS
+    finally:
+        settings.CONTEXT_MAX_CHARS = old_max
+        if original is not None:
+            _restore_marker_store(agent_id, original)
+
+
+def test_similarity_search_context_cap_truncates_at_word_boundary():
+    import uuid
+    from app.config import settings
+
+    agent_id = "ctx-" + uuid.uuid4().hex[:16]
+    old_max = settings.CONTEXT_MAX_CHARS
+    settings.CONTEXT_MAX_CHARS = 60
+    original = None
+    try:
+        original = _with_marker_store(agent_id, _marker_chunks())
+        results = tenant_vector_store.similarity_search(
+            agent_id, "please find marker05end now", k=1)
+        assert len(results) == 1
+        text = results[0].page_content
+        assert 0 < len(text) <= 60
+        # Truncated at a word boundary: it is a clean prefix of the
+        # fully expanded region and does not end mid-word.
+        assert text.startswith("section3 marker03end")
+        assert not text.endswith(("sectio", "marke", "fille"))
+    finally:
+        settings.CONTEXT_MAX_CHARS = old_max
+        if original is not None:
+            _restore_marker_store(agent_id, original)
+
+
+def test_similarity_search_without_chunk_index_returns_plain_hit():
+    import uuid
+    from langchain_core.documents import Document
+
+    agent_id = "ctx-" + uuid.uuid4().hex[:16]
+    original = None
+    try:
+        docs = [
+            Document(page_content="plain chunk marker07end with no position",
+                     metadata={}),
+            Document(page_content="other chunk marker08end also plain",
+                     metadata={}),
+        ]
+        original = _with_marker_store(agent_id, docs)
+        results = tenant_vector_store.similarity_search(
+            agent_id, "find marker07end please", k=1)
+        assert len(results) == 1
+        # No chunk_index metadata: the hit is returned exactly as stored.
+        assert results[0].page_content == "plain chunk marker07end with no position"
+    finally:
+        if original is not None:
+            _restore_marker_store(agent_id, original)

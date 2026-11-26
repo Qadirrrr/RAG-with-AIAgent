@@ -60,7 +60,128 @@ class TenantVectorStore:
         store = self.get_store(agent_id)
         if store is None:
             return []
-        return store.similarity_search(query, k=k, filter={"agent_id": agent_id})
+        hits = store.similarity_search(query, k=k, filter={"agent_id": agent_id})
+        if not hits:
+            return hits
+        # Small-to-big retrieval: chunks are tiny (20 words), so a raw
+        # hit is often a broken fragment. Expand each hit with its
+        # neighbouring chunks from the same document before returning.
+        # Any failure falls back to the raw hits so chat never breaks.
+        try:
+            return self._expand_hits_with_neighbours(store, agent_id, hits)
+        except Exception as e:
+            print(f"Neighbour expansion failed, returning raw hits: {e}")
+            return hits
+
+    @staticmethod
+    def _chunk_index_of(doc: Document) -> Optional[int]:
+        try:
+            value = (doc.metadata or {}).get("chunk_index")
+            return None if value is None else int(value)
+        except (TypeError, ValueError):
+            return None
+
+    def _fetch_document_chunks(self, store, agent_id: str, document_id: str) -> dict:
+        """Return {chunk_index: text} for every chunk of one document.
+
+        Uses the LangChain Chroma wrapper's ``get`` with a ``where``
+        filter on document_id + agent_id (the collection itself is
+        already per-agent). Returns an empty dict on any failure.
+        """
+        try:
+            result = store.get(where={"$and": [{"document_id": document_id},
+                                               {"agent_id": agent_id}]})
+        except Exception as e:
+            print(f"Could not fetch chunks for document {document_id}: {e}")
+            return {}
+        texts = (result or {}).get("documents") or []
+        metadatas = (result or {}).get("metadatas") or []
+        chunk_map = {}
+        for text, meta in zip(texts, metadatas):
+            if text is None:
+                continue
+            try:
+                idx = int((meta or {}).get("chunk_index"))
+            except (TypeError, ValueError):
+                continue
+            chunk_map[idx] = text
+        return chunk_map
+
+    def _expand_hits_with_neighbours(self, store, agent_id: str, hits: List[Document]) -> List[Document]:
+        try:
+            neighbours = max(0, int(settings.CONTEXT_NEIGHBORS))
+        except (TypeError, ValueError):
+            neighbours = 2
+        try:
+            max_chars = int(settings.CONTEXT_MAX_CHARS)
+        except (TypeError, ValueError):
+            max_chars = 12000
+
+        chunk_maps = {}   # document_id -> {chunk_index: text}
+        doc_windows = {}  # document_id -> list of [start, end, rank, metadata]
+        passages = []     # (rank, Document) for hits that stay unexpanded
+
+        for rank, hit in enumerate(hits):
+            meta = hit.metadata or {}
+            doc_id = meta.get("document_id")
+            idx = self._chunk_index_of(hit)
+            if doc_id is None or idx is None:
+                # Older chunks without position metadata stay as-is.
+                passages.append((rank, hit))
+                continue
+            if doc_id not in chunk_maps:
+                chunk_maps[doc_id] = self._fetch_document_chunks(store, agent_id, doc_id)
+            if idx not in chunk_maps[doc_id]:
+                passages.append((rank, hit))
+                continue
+            doc_windows.setdefault(doc_id, []).append(
+                [idx - neighbours, idx + neighbours, rank, meta])
+
+        # Merge overlapping windows per document into regions; each
+        # chunk index is included exactly once per region.
+        for doc_id, windows in doc_windows.items():
+            cmap = chunk_maps[doc_id]
+            windows.sort(key=lambda w: w[0])
+            merged = []
+            for start, end, rank, meta in windows:
+                present = [i for i in range(start, end + 1) if i in cmap]
+                if not present:
+                    continue
+                lo, hi = present[0], present[-1]
+                if merged and lo <= merged[-1][1] + 1:
+                    region = merged[-1]
+                    region[1] = max(region[1], hi)
+                    if rank < region[2]:
+                        region[2] = rank
+                        region[3] = meta
+                else:
+                    merged.append([lo, hi, rank, meta])
+            for lo, hi, rank, meta in merged:
+                text = " ".join(cmap[i] for i in range(lo, hi + 1))
+                passages.append((rank, Document(page_content=text,
+                                                metadata=dict(meta))))
+
+        passages.sort(key=lambda item: item[0])
+
+        # Cap the total context size; truncate the final region at a
+        # word boundary if it would exceed the cap.
+        results: List[Document] = []
+        total = 0
+        for _rank, doc in passages:
+            text = doc.page_content or ""
+            if max_chars > 0 and total + len(text) > max_chars:
+                remaining = max_chars - total
+                if remaining > 0:
+                    cut = text[:remaining]
+                    if " " in cut:
+                        cut = cut[:cut.rfind(" ")].rstrip()
+                    if cut:
+                        results.append(Document(page_content=cut,
+                                                metadata=doc.metadata))
+                break
+            results.append(doc)
+            total += len(text)
+        return results
 
     def delete_document(self, agent_id: str, document_id: str) -> bool:
         try:

@@ -65,6 +65,25 @@ running with the models pulled; if Ollama is unreachable the chat
 returns a clear "self-hosted Ollama service is not available" message
 instead of crashing.
 
+## Public API
+
+Anyone can ask a chatbot a question from their own code. One API key is
+linked to one chatbot, and answers come only from that chatbot's own
+documents, so every chatbot gives personalized answers for its owner.
+
+- **Endpoint:** `POST /api/public/chat`
+- **Auth:** header `X-Agent-Key: <your API key>` (create keys on the
+  Integrations page in the dashboard)
+- **Body:** `{"message": "What are your opening hours?"}`. Add
+  `"conversation_id"` from a previous response to continue the same
+  conversation. No agent ID is needed; the key selects the chatbot.
+- **Response:** `{"conversation_id": "...", "response": "...", "sources": [], "agent_steps": []}`
+- **Errors:** `401` missing or invalid key (or an `agent_id` that does not
+  belong to the key), `403` chatbot deactivated, `422` missing `message`.
+
+Runnable example (about 15 lines of Python):
+[`examples/python_client.py`](examples/python_client.py)
+
 ## Plans
 
 | Plan | Price | Messages/month | Agents | Documents |

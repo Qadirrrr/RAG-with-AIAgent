@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     # from across a document instead of answering from a few sections.
     RETRIEVAL_K: int = 10
 
+    # Small-to-big retrieval: chunks are tiny (20 words), so each
+    # retrieved chunk is expanded with the CONTEXT_NEIGHBORS chunks
+    # before and after it in the same document before being given to
+    # the model, and the assembled context is capped at
+    # CONTEXT_MAX_CHARS characters so prompts stay bounded.
+    CONTEXT_NEIGHBORS: int = 2
+    CONTEXT_MAX_CHARS: int = 12000
+
     CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
     UPLOAD_DIRECTORY: str = "./data/uploads"
 

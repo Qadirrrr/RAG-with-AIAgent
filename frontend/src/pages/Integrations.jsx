@@ -73,6 +73,24 @@ export default function Integrations() {
   const selectedAgent = agents.find((a) => String(a.id) === String(agentId));
   const widgetSnippet = `<script src="${API_BASE_URL}/widget.js" data-agent-key="YOUR_API_KEY" data-api-url="${API_BASE_URL}"></script>`;
   const curlExample = `curl -X POST ${API_BASE_URL}/api/public/chat \\\n  -H "Content-Type: application/json" \\\n  -H "X-Agent-Key: YOUR_API_KEY" \\\n  -d '{"message": "Hello, what are your opening hours?"}'`;
+  const pythonExample = `import requests
+
+response = requests.post(
+    "${API_BASE_URL}/api/public/chat",
+    headers={"X-Agent-Key": "YOUR_API_KEY"},
+    json={"message": "What are your opening hours?"},
+    timeout=60,
+)
+response.raise_for_status()
+data = response.json()
+print(data["response"])
+print("Conversation ID:", data["conversation_id"])`;
+  const responseExample = `{
+  "conversation_id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "response": "We are open Monday to Saturday, 9 AM to 6 PM.",
+  "sources": [],
+  "agent_steps": []
+}`;
 
   return (
     <div className="space-y-6">
@@ -104,13 +122,34 @@ export default function Integrations() {
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6">
         <h3 className="font-semibold text-slate-800">REST API</h3>
-        <p className="text-sm text-slate-500 mt-1">Send a message to this chatbot from any server or app.</p>
-        <div className="relative mt-4">
+        <p className="text-sm text-slate-500 mt-1">Anyone can ask this chatbot a question from their own code. Send a POST request to <code className="bg-slate-100 px-1 rounded">POST {API_BASE_URL}/api/public/chat</code> with your API key in the <code className="bg-slate-100 px-1 rounded">X-Agent-Key</code> header and a JSON body with a <code className="bg-slate-100 px-1 rounded">message</code> field. That is all: your API key is linked to this one chatbot, so no agent ID is needed, and the answer comes only from this chatbot's own documents. To continue the same conversation, send the <code className="bg-slate-100 px-1 rounded">conversation_id</code> from the first response with your next message.</p>
+
+        <p className="text-sm font-semibold text-slate-700 mt-5">Python example</p>
+        <div className="relative mt-2">
+          <pre className="bg-slate-900 text-slate-100 text-xs sm:text-sm rounded-xl p-4 overflow-x-auto whitespace-pre-wrap break-all">{pythonExample}</pre>
+          <button onClick={() => copy(pythonExample, 'python')} className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
+            {copied === 'python' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {copied === 'python' ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+
+        <p className="text-sm font-semibold text-slate-700 mt-5">curl example</p>
+        <div className="relative mt-2">
           <pre className="bg-slate-900 text-slate-100 text-xs sm:text-sm rounded-xl p-4 overflow-x-auto whitespace-pre-wrap break-all">{curlExample}</pre>
           <button onClick={() => copy(curlExample, 'curl')} className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">
             {copied === 'curl' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />} {copied === 'curl' ? 'Copied' : 'Copy'}
           </button>
         </div>
+
+        <p className="text-sm font-semibold text-slate-700 mt-5">Response</p>
+        <pre className="bg-slate-900 text-slate-100 text-xs sm:text-sm rounded-xl p-4 overflow-x-auto whitespace-pre-wrap break-all mt-2">{responseExample}</pre>
+        <p className="text-sm text-slate-500 mt-2">The answer text is in the <code className="bg-slate-100 px-1 rounded">response</code> field. <code className="bg-slate-100 px-1 rounded">sources</code> lists the documents used when citations are switched on for this chatbot, otherwise it is empty.</p>
+
+        <p className="text-sm font-semibold text-slate-700 mt-5">Errors</p>
+        <ul className="text-sm text-slate-500 mt-2 space-y-1.5 list-disc list-inside">
+          <li><code className="bg-slate-100 px-1 rounded">401</code> The API key is missing or invalid, or an <code className="bg-slate-100 px-1 rounded">agent_id</code> was sent that does not belong to this key.</li>
+          <li><code className="bg-slate-100 px-1 rounded">403</code> This chatbot is deactivated. Activate it on the Chatbots page to use the API.</li>
+          <li><code className="bg-slate-100 px-1 rounded">422</code> The request body is invalid, for example the <code className="bg-slate-100 px-1 rounded">message</code> field is missing.</li>
+        </ul>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6">
