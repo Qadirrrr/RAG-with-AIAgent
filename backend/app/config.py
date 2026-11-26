@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     CONTEXT_NEIGHBORS: int = 2
     CONTEXT_MAX_CHARS: int = 12000
 
+    # Keyword fallback: when vector search finds fewer distinct chunks
+    # than requested, chunks are also matched by plain keyword overlap
+    # with the question, so fewer questions miss data that exists.
+    KEYWORD_FALLBACK: bool = True
+
     CHROMA_PERSIST_DIRECTORY: str = "./data/chroma"
     UPLOAD_DIRECTORY: str = "./data/uploads"
 

@@ -1099,6 +1099,110 @@ def test_similarity_search_without_chunk_index_returns_plain_hit():
             _restore_marker_store(agent_id, original)
 
 
+# ---------------------------------------------------------------------------
+# Keyword fallback merge: when vector search finds fewer distinct source
+# chunks than k, chunks that share keywords with the question top the
+# results up. The duplicate row of chunk 5 makes vector search return
+# two rows but only one distinct source chunk, which is what triggers
+# the fallback deterministically.
+# ---------------------------------------------------------------------------
+
+def _chunks_with_duplicate_and_keyword_target():
+    """12 marker chunks; chunk 9 carries a unique keyword and chunk 5
+    is stored twice (same document and chunk_index)."""
+    from langchain_core.documents import Document
+    docs = _marker_chunks()
+    docs[9] = Document(
+        page_content="section9 marker09end zanzibar waterfalls guide",
+        metadata={"chunk_index": 9},
+    )
+    docs.append(Document(
+        page_content=docs[5].page_content,
+        metadata={"chunk_index": 5},
+    ))
+    return docs
+
+
+def test_similarity_search_keyword_fallback_finds_missed_chunk():
+    import uuid
+
+    agent_id = "kw-" + uuid.uuid4().hex[:16]
+    original = None
+    try:
+        original = _with_marker_store(
+            agent_id, _chunks_with_duplicate_and_keyword_target())
+        # Both top-2 vector slots are the chunk-5 rows (the unique
+        # best match), so only 1 distinct source chunk is found for
+        # k=2 and the keyword fallback must top the results up.
+        results = tenant_vector_store.similarity_search(
+            agent_id, "marker05end zanzibar", k=2)
+        combined = "\n".join(d.page_content for d in results)
+        # The keyword-matching chunk 9 was returned...
+        assert "zanzibar" in combined
+        # ...expanded with its neighbours, in order.
+        positions = [combined.index("section%d " % i) for i in (8, 9, 10)]
+        assert positions == sorted(positions)
+        # No chunk text appears twice across the passages.
+        for i in range(12):
+            assert combined.count("section%d " % i) <= 1
+    finally:
+        if original is not None:
+            _restore_marker_store(agent_id, original)
+
+
+def test_similarity_search_keyword_fallback_adds_nothing_when_full():
+    import uuid
+
+    agent_id = "kw-" + uuid.uuid4().hex[:16]
+    original = None
+    calls = []
+    real_fallback = tenant_vector_store._keyword_fallback_hits
+
+    def counting_fallback(*args, **kwargs):
+        calls.append(1)
+        return real_fallback(*args, **kwargs)
+
+    tenant_vector_store._keyword_fallback_hits = counting_fallback
+    try:
+        # No duplicate row: vector search returns 3 distinct source
+        # chunks for k=3, so the keyword path must not run at all.
+        docs = _chunks_with_duplicate_and_keyword_target()[:-1]
+        original = _with_marker_store(agent_id, docs)
+        results = tenant_vector_store.similarity_search(
+            agent_id, "marker05end zanzibar", k=3)
+        assert calls == []
+        combined = "\n".join(d.page_content for d in results)
+        for i in range(12):
+            assert combined.count("section%d " % i) <= 1
+    finally:
+        tenant_vector_store._keyword_fallback_hits = real_fallback
+        if original is not None:
+            _restore_marker_store(agent_id, original)
+
+
+def test_similarity_search_keyword_fallback_disabled(monkeypatch):
+    import uuid
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "KEYWORD_FALLBACK", False)
+    agent_id = "kw-" + uuid.uuid4().hex[:16]
+    original = None
+    try:
+        original = _with_marker_store(
+            agent_id, _chunks_with_duplicate_and_keyword_target())
+        results = tenant_vector_store.similarity_search(
+            agent_id, "marker05end zanzibar", k=2)
+        combined = "\n".join(d.page_content for d in results)
+        # Old behaviour only: the chunk-5 hits expand to chunks 3..7
+        # and the keyword-matching chunk is not pulled in.
+        assert "section5 " in combined
+        assert "zanzibar" not in combined
+        assert "section9 " not in combined
+    finally:
+        if original is not None:
+            _restore_marker_store(agent_id, original)
+
+
 def test_api_key_reveal_returns_full_key_and_list_stays_masked(client):
     h, ws_id, agent, raw_key = _agent_with_key(client, "reveal@example.com")
     base = f"/api/workspaces/{ws_id}/agents/{agent['id']}/api-keys"

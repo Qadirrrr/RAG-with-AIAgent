@@ -22,6 +22,26 @@ from langchain_core.documents import Document
 from app.config import settings
 from app.services.vector_store import vector_store_service
 
+# Keyword fallback matching: question words shorter than 3 characters
+# and common stopwords carry no signal, so they are ignored when
+# scoring chunks by keyword overlap with the question.
+_KEYWORD_STOPWORDS = {
+    "the", "and", "for", "what", "how", "are", "was", "were", "is", "in",
+    "of", "to", "a", "an", "on", "at", "by", "with", "from", "that",
+    "this", "it", "its", "as", "or", "do", "does", "did", "can", "could",
+    "should", "would", "will", "shall", "may", "might", "i", "you", "he",
+    "she", "we", "they", "me", "him", "us", "them", "my", "your", "his",
+    "her", "our", "their", "am", "be", "been", "has", "have", "had",
+    "not", "no", "yes", "if", "but", "so", "than", "then", "there",
+    "here", "when", "where", "who", "which", "why", "any", "all",
+    "each", "per", "via", "about", "into", "over", "under", "again",
+}
+_KEYWORD_SCAN_LIMIT = 2000
+
+
+def _keyword_tokens(text: str) -> List[str]:
+    return re.findall(r"[a-z0-9]+", (text or "").lower())
+
 
 def collection_name_for_agent(agent_id: str) -> str:
     safe = re.sub(r"[^a-zA-Z0-9_-]", "_", str(agent_id))
@@ -61,17 +81,94 @@ class TenantVectorStore:
         if store is None:
             return []
         hits = store.similarity_search(query, k=k, filter={"agent_id": agent_id})
-        if not hits:
-            return hits
-        # Small-to-big retrieval: chunks are tiny (20 words), so a raw
-        # hit is often a broken fragment. Expand each hit with its
-        # neighbouring chunks from the same document before returning.
-        # Any failure falls back to the raw hits so chat never breaks.
+        # Keyword fallback merge: if the vector search found fewer
+        # distinct source chunks than requested, top the results up
+        # with chunks that share keywords with the question. Those
+        # extra hits go through the same small-to-big neighbour
+        # expansion below, so they come back as full passages appended
+        # after the vector passages. Best-effort throughout: any
+        # failure returns the plain vector results so chat never breaks.
         try:
-            return self._expand_hits_with_neighbours(store, agent_id, hits)
+            merged_hits = list(hits)
+            if self._keyword_fallback_enabled():
+                found = {self._source_key(hit) for hit in hits}
+                if len(found) < k:
+                    merged_hits = hits + self._keyword_fallback_hits(
+                        store, agent_id, query, found, k - len(found))
+            if not merged_hits:
+                return merged_hits
+            # Small-to-big retrieval: chunks are tiny (20 words), so a
+            # raw hit is often a broken fragment. Expand each hit with
+            # its neighbouring chunks from the same document before
+            # returning.
+            return self._expand_hits_with_neighbours(store, agent_id, merged_hits)
         except Exception as e:
-            print(f"Neighbour expansion failed, returning raw hits: {e}")
+            print(f"Retrieval post-processing failed, returning raw hits: {e}")
             return hits
+
+    @staticmethod
+    def _keyword_fallback_enabled() -> bool:
+        try:
+            return bool(getattr(settings, "KEYWORD_FALLBACK", True))
+        except Exception:
+            return True
+
+    def _source_key(self, doc: Document):
+        """Identity of the source chunk a hit came from.
+
+        Chunks with position metadata are identified by
+        (document_id, chunk_index); older chunks without it fall back
+        to their text, so duplicate rows of one source chunk count
+        only once when measuring retrieval coverage.
+        """
+        meta = doc.metadata or {}
+        doc_id = meta.get("document_id")
+        idx = self._chunk_index_of(doc)
+        if doc_id is not None and idx is not None:
+            return ("chunk", doc_id, idx)
+        return ("text", doc.page_content)
+
+    def _keyword_fallback_hits(self, store, agent_id: str, query: str,
+                               found: set, limit_count: int) -> List[Document]:
+        """Top up retrieval with chunks sharing keywords with the query.
+
+        Scans the agent's chunks (capped), scores each by how many of
+        the question's meaningful words it contains, and returns the
+        best-scoring chunks that vector search did not already find.
+        Returns an empty list on any failure.
+        """
+        try:
+            if limit_count <= 0:
+                return []
+            keywords = {w for w in _keyword_tokens(query)
+                        if len(w) >= 3 and w not in _KEYWORD_STOPWORDS}
+            if not keywords:
+                return []
+            try:
+                result = store.get(where={"agent_id": agent_id},
+                                   limit=_KEYWORD_SCAN_LIMIT)
+            except TypeError:
+                result = store.get(where={"agent_id": agent_id})
+            texts = (result or {}).get("documents") or []
+            metadatas = (result or {}).get("metadatas") or []
+            scored = []
+            for seq, (text, meta) in enumerate(zip(texts, metadatas)):
+                if not text:
+                    continue
+                doc = Document(page_content=text, metadata=dict(meta or {}))
+                if self._source_key(doc) in found:
+                    continue
+                score = len(keywords & set(_keyword_tokens(text)))
+                if score > 0:
+                    scored.append((-score,
+                                   str((meta or {}).get("document_id") or ""),
+                                   self._chunk_index_of(doc) or 0,
+                                   seq, doc))
+            scored.sort(key=lambda item: item[:4])
+            return [item[4] for item in scored[:limit_count]]
+        except Exception as e:
+            print(f"Keyword fallback failed, keeping vector results only: {e}")
+            return []
 
     @staticmethod
     def _chunk_index_of(doc: Document) -> Optional[int]:

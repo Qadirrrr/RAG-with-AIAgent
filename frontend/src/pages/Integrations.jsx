@@ -139,6 +139,48 @@ print("Conversation ID:", data["conversation_id"])`;
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Key className="w-4 h-4 text-teal-600" /> API keys</h3>
+        <p className="text-sm text-slate-500 mt-1">Use the eye button to view a key and the copy button to copy it. Keys created before viewing was enabled cannot be shown, create a new key for those. Keep your keys safe and never share them publicly.</p>
+        {newKey && (
+          <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+            <p className="text-xs font-semibold text-emerald-800 mb-2">Your new API key. You can also view and copy it any time from the list below:</p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 bg-white border border-emerald-200 rounded-lg px-3 py-2 text-sm break-all">{newKey}</code>
+              <button onClick={() => copy(newKey, 'newkey')} className={btnPrimary + ' !px-3 !py-2 text-xs'}>{copied === 'newkey' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied === 'newkey' ? 'Copied' : 'Copy'}</button>
+            </div>
+          </div>
+        )}
+        <form onSubmit={createKey} className="flex gap-2 mt-4">
+          <input className={inputCls} value={keyName} onChange={(e) => setKeyName(e.target.value)} placeholder="Key name, for example Website widget" />
+          <button type="submit" disabled={creating} className={btnPrimary + ' shrink-0'}>{creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Create key</button>
+        </form>
+        {keys.length === 0 ? (
+          <p className="text-sm text-slate-500 mt-4">No API keys yet for this chatbot.</p>
+        ) : (
+          <ul className="divide-y divide-slate-100 mt-4">
+            {keys.map((k) => (
+              <li key={k.id} className="py-3 flex items-start gap-3">
+                <Key className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{k.name || 'API key'}</p>
+                  <p className="text-xs text-slate-500 font-mono">{k.prefix || k.key_prefix || ''}... {k.created_at ? ` / ${new Date(k.created_at).toLocaleDateString()}` : ''}</p>
+                  {revealedKeys[k.id] && (
+                    <p className="text-xs text-slate-700 font-mono break-all mt-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">{revealedKeys[k.id]}</p>
+                  )}
+                  {keyErrors[k.id] && (
+                    <p className="text-xs text-rose-600 mt-1.5">{keyErrors[k.id]}</p>
+                  )}
+                </div>
+                <button onClick={() => toggleRevealKey(k)} title={revealedKeys[k.id] ? 'Hide key' : 'Show key'} className="p-2 rounded-lg text-slate-400 hover:text-teal-700 hover:bg-teal-50">{revealedKeys[k.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+                <button onClick={() => copyKey(k)} title="Copy key" className="p-2 rounded-lg text-slate-400 hover:text-teal-700 hover:bg-teal-50">{copied === `key-${k.id}` ? <Check className="w-4 h-4 text-teal-600" /> : <Copy className="w-4 h-4" />}</button>
+                <button onClick={() => deleteKey(k)} title="Revoke key" className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"><Trash2 className="w-4 h-4" /></button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 p-6">
         <h3 className="font-semibold text-slate-800">Website widget</h3>
         <p className="text-sm text-slate-500 mt-1">Paste this one line before the closing <code className="bg-slate-100 px-1 rounded">&lt;/body&gt;</code> tag on any website. Create an API key below first, then replace YOUR_API_KEY.</p>
         <div className="relative mt-4">
@@ -181,47 +223,6 @@ print("Conversation ID:", data["conversation_id"])`;
         </ul>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-6">
-        <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Key className="w-4 h-4 text-teal-600" /> API keys</h3>
-        <p className="text-sm text-slate-500 mt-1">Use the eye button to view a key and the copy button to copy it. Keys created before viewing was enabled cannot be shown, create a new key for those. Keep your keys safe and never share them publicly.</p>
-        {newKey && (
-          <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
-            <p className="text-xs font-semibold text-emerald-800 mb-2">Your new API key. You can also view and copy it any time from the list below:</p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 bg-white border border-emerald-200 rounded-lg px-3 py-2 text-sm break-all">{newKey}</code>
-              <button onClick={() => copy(newKey, 'newkey')} className={btnPrimary + ' !px-3 !py-2 text-xs'}>{copied === 'newkey' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied === 'newkey' ? 'Copied' : 'Copy'}</button>
-            </div>
-          </div>
-        )}
-        <form onSubmit={createKey} className="flex gap-2 mt-4">
-          <input className={inputCls} value={keyName} onChange={(e) => setKeyName(e.target.value)} placeholder="Key name, for example Website widget" />
-          <button type="submit" disabled={creating} className={btnPrimary + ' shrink-0'}>{creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} Create key</button>
-        </form>
-        {keys.length === 0 ? (
-          <p className="text-sm text-slate-500 mt-4">No API keys yet for this chatbot.</p>
-        ) : (
-          <ul className="divide-y divide-slate-100 mt-4">
-            {keys.map((k) => (
-              <li key={k.id} className="py-3 flex items-start gap-3">
-                <Key className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-800 truncate">{k.name || 'API key'}</p>
-                  <p className="text-xs text-slate-500 font-mono">{k.prefix || k.key_prefix || ''}... {k.created_at ? ` / ${new Date(k.created_at).toLocaleDateString()}` : ''}</p>
-                  {revealedKeys[k.id] && (
-                    <p className="text-xs text-slate-700 font-mono break-all mt-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">{revealedKeys[k.id]}</p>
-                  )}
-                  {keyErrors[k.id] && (
-                    <p className="text-xs text-rose-600 mt-1.5">{keyErrors[k.id]}</p>
-                  )}
-                </div>
-                <button onClick={() => toggleRevealKey(k)} title={revealedKeys[k.id] ? 'Hide key' : 'Show key'} className="p-2 rounded-lg text-slate-400 hover:text-teal-700 hover:bg-teal-50">{revealedKeys[k.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
-                <button onClick={() => copyKey(k)} title="Copy key" className="p-2 rounded-lg text-slate-400 hover:text-teal-700 hover:bg-teal-50">{copied === `key-${k.id}` ? <Check className="w-4 h-4 text-teal-600" /> : <Copy className="w-4 h-4" />}</button>
-                <button onClick={() => deleteKey(k)} title="Revoke key" className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"><Trash2 className="w-4 h-4" /></button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
     </div>
   );
 }
