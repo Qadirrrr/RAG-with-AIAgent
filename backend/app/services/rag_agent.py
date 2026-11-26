@@ -165,8 +165,8 @@ class RAGAgentService:
                 return await run_agent_answer(
                     llm=llm, question=question, history=history,
                     agent_config=agent_config, agent_id=agent_id)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[RAG] Agent mode fallback to standard RAG for agent={agent_id}: {e}")
 
         agent_steps = []
 

@@ -240,16 +240,50 @@ async def run_agent_answer(llm, question: str, history: Optional[List[Dict[str, 
         tools_enabled=agent_config.get("tools_enabled"),
     )
 
+    if not tools:
+        raise ValueError("No tools enabled for agent mode; falling back to RAG.")
+
+    # Pre-fetch relevant RAG knowledge for this chatbot so the agent has
+    # immediate grounded context on the first turn (faster + never misses
+    # uploaded documents even if the LLM skips calling knowledge_search).
+    pre_context = ""
+    if agent_id:
+        try:
+            from app.services.tenant_vector_store import tenant_vector_store
+            pre_docs = tenant_vector_store.similarity_search(agent_id, question, k=settings.RETRIEVAL_K)
+            if pre_docs:
+                parts = []
+                seen_src = set()
+                for d in pre_docs:
+                    txt = (d.page_content or "").strip()
+                    if txt:
+                        parts.append(txt)
+                    if show_citations:
+                        meta = d.metadata or {}
+                        name = meta.get("document_name") or "Document"
+                        if name not in seen_src and name not in state["_seen_sources"]:
+                            seen_src.add(name)
+                            state["_seen_sources"].add(name)
+                            state["sources"].append(DocumentSource(
+                                document_id=str(meta.get("document_id") or ""),
+                                document_name=name,
+                                page=meta.get("page"),
+                                snippet=txt[:200],
+                            ))
+                pre_context = "\n\n".join(parts)
+        except Exception:
+            pre_context = ""
+
     lang_note = f"Answer in {language}." if language else ""
     custom = f"\nChatbot instructions: {instructions}" if instructions else ""
     system_prompt = (
-        f"You are {agent_name}, a knowledgeable, direct, and professional AI assistant. You have tools that search this chatbot's own knowledge. Always search knowledge first before answering business or document questions."
+        f"You are {agent_name}, a knowledgeable, direct, and professional AI assistant. You have tools that search this chatbot's own knowledge. Always answer strictly from this chatbot's knowledge."
         f"{custom}\n"
         f"{lang_note}\n"
         "STRICT GROUNDING AND ACCURACY RULES:\n"
-        "1. For questions about the business, products, documents, plans, prices, or policies, call knowledge_search first and answer strictly using ONLY the returned knowledge. Do NOT extrapolate or assume anything outside of it.\n"
+        "1. Answer strictly using ONLY the provided KNOWLEDGE below or knowledge returned by knowledge_search. Do NOT extrapolate or assume anything outside of it.\n"
         "2. Include specific numbers, names, dates, pricing, and requirements directly from the knowledge.\n"
-        "3. If knowledge_search returns no relevant information, politely state: 'I apologize, but I do not have that specific information in my knowledge base.' Do NOT make up or guess an answer.\n"
+        "3. If the provided KNOWLEDGE does not answer the question and knowledge_search returns no relevant information, politely state: 'I apologize, but I do not have that specific information in my knowledge base.' Do NOT make up or guess an answer.\n"
         "4. Use calculator for arithmetic and current_datetime for date or time questions, and list_documents when asked which documents are available.\n"
         "5. Never mention meta-phrases such as 'according to the document', 'source', or 'as stated in'. Answer authoritatively and naturally.\n"
         "6. Be concise, direct, and prompt. Format with clean paragraphs or bullet points."
@@ -264,7 +298,10 @@ async def run_agent_answer(llm, question: str, history: Optional[List[Dict[str, 
                 messages.append(HumanMessage(content=msg.get("content", "")))
             elif msg.get("role") == "assistant":
                 messages.append(AIMessage(content=msg.get("content", "")))
-    messages.append(HumanMessage(content=question))
+    if pre_context:
+        messages.append(HumanMessage(content=f"KNOWLEDGE:\n{pre_context}\n\nUSER QUESTION:\n{question}"))
+    else:
+        messages.append(HumanMessage(content=question))
 
     # Each tool round trip costs about 2 graph steps, so the recursion
     # limit is derived from the configured max tool steps.
