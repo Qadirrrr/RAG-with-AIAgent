@@ -8,11 +8,8 @@ import { useAuth } from '../context/AuthContext';
 import WorkspaceSwitcher from './WorkspaceSwitcher';
 
 const navItems = [
-  { name: 'Dashboard', path: '/', icon: LayoutDashboard },
   { name: 'Chatbots', path: '/agents', icon: Bot },
-  { name: 'Analytics', path: '/analytics', icon: BarChart3 },
-  { name: 'Billing', path: '/billing', icon: CreditCard },
-  { name: 'Integrations', path: '/integrations', icon: Plug },
+  { name: 'Integrations & API', path: '/integrations', icon: Plug },
   { name: 'Documents', path: '/documents', icon: Files },
   { name: 'Settings', path: '/settings', icon: Settings },
 ];
@@ -69,16 +66,6 @@ export default function Sidebar({ isOpen, onClose }) {
                 </NavLink>
               );
             })}
-            {isAdmin && (
-              <NavLink
-                to="/admin"
-                onClick={() => onClose && onClose()}
-                className={({ isActive }) => `flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all ${isActive ? 'bg-teal-700 text-white font-semibold shadow-sm' : 'text-white/75 hover:text-white hover:bg-white/10'}`}
-              >
-                <ShieldCheck className="w-5 h-5 flex-shrink-0" />
-                <span>Admin</span>
-              </NavLink>
-            )}
           </nav>
         </div>
 

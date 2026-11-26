@@ -21,12 +21,9 @@ import { WorkspaceProvider } from './context/WorkspaceContext';
 import { Spinner } from './components/ui';
 
 const routeTitles = {
-  '/': 'Dashboard',
-  '/agents': 'AI Agents',
-  '/analytics': 'Analytics',
-  '/billing': 'Billing and Plans',
-  '/integrations': 'Integrations',
-  '/admin': 'Super-admin',
+  '/': 'AI Chatbots',
+  '/agents': 'AI Chatbots',
+  '/integrations': 'Integrations & API Script',
   '/documents': 'Knowledge Documents',
   '/settings': 'System Settings',
 };
@@ -71,14 +68,11 @@ function Shell() {
         <Navbar title={title} onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} isOnline={isOnline} />
         <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto">
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<Agents />} />
             <Route path="/agents" element={<Agents />} />
             <Route path="/agents/:agentId/playground" element={<Playground />} />
             <Route path="/agents/:agentId/knowledge" element={<Knowledge />} />
-            <Route path="/analytics" element={<Analytics />} />
-            <Route path="/billing" element={<Billing />} />
             <Route path="/integrations" element={<Integrations />} />
-            <Route path="/admin" element={<Admin />} />
             <Route path="/documents" element={<Documents />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" replace />} />

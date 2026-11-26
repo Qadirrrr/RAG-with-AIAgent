@@ -100,12 +100,13 @@ export default function Integrations() {
   if (agents.length === 0) return <EmptyState icon={Plug} title="No chatbots yet" text="Create a chatbot first, then come back here to get its website widget and API key." />;
 
   const selectedAgent = agents.find((a) => String(a.id) === String(agentId));
-  const widgetSnippet = `<script src="${API_BASE_URL}/widget.js" data-agent-key="YOUR_API_KEY" data-api-url="${API_BASE_URL}"></script>`;
-  const curlExample = `curl -X POST ${API_BASE_URL}/api/public/chat \\\n  -H "Content-Type: application/json" \\\n  -H "X-Agent-Key: YOUR_API_KEY" \\\n  -d '{"message": "Hello, what are your opening hours?"}'`;
+  const serverUrl = (typeof window !== 'undefined' && window.location.origin) ? window.location.origin : (API_BASE_URL || 'http://localhost:8000');
+  const widgetSnippet = `<script src="${serverUrl}/widget.js" data-agent-key="YOUR_API_KEY" data-api-url="${serverUrl}"></script>`;
+  const curlExample = `curl -X POST ${serverUrl}/api/public/chat \\\n  -H "Content-Type: application/json" \\\n  -H "X-Agent-Key: YOUR_API_KEY" \\\n  -d '{"message": "Hello, what are your opening hours?"}'`;
   const pythonExample = `import requests
 
 response = requests.post(
-    "${API_BASE_URL}/api/public/chat",
+    "${serverUrl}/api/public/chat",
     headers={"X-Agent-Key": "YOUR_API_KEY"},
     json={"message": "What are your opening hours?"},
     timeout=60,
