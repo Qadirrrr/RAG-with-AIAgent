@@ -82,7 +82,11 @@ class TenantVectorStore:
         if store is None:
             return []
 
-        hits = store.similarity_search(query, k=retrieval_k, filter={"agent_id": agent_id})
+        try:
+            hits = store.similarity_search(query, k=retrieval_k, filter={"agent_id": agent_id})
+        except Exception as e:
+            print(f"Vector similarity search failed for agent {agent_id}, falling back to keyword search: {e}")
+            hits = []
 
         # Keyword fallback merge: top up with keyword-matching chunks when needed
         try:

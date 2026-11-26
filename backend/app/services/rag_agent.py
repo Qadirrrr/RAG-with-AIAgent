@@ -116,8 +116,11 @@ class RAGAgentService:
                 model=chosen_model,
                 temperature=temperature,
                 base_url=settings.OLLAMA_BASE_URL.rstrip("/"),
+                keep_alive="30m",
+                num_predict=512,
             )
-        except Exception:
+        except Exception as e:
+            logger.error(f"Failed to initialize ChatOllama: {e}")
             return None
 
     async def answer_question(self, question: str, history: List[Dict[str, str]] = None,
@@ -177,6 +180,7 @@ class RAGAgentService:
             else:
                 docs = vector_store_service.similarity_search(question, k=settings.RETRIEVAL_K)
         except Exception as e:
+            logger.error(f"[RAG] Knowledge retrieval failed for agent={agent_id}: {e}", exc_info=True)
             docs = []
             agent_steps.append("Knowledge search warning.")
 

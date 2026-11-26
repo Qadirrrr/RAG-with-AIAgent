@@ -51,6 +51,11 @@ def _check_document_limit(workspace_id: str, db: Session):
 
 def _embed_chunks(agent, workspace_id: str, doc: Document, chunks, db: Session):
     """Embed chunks into the agent's private collection; mark failed on error."""
+    if not chunks:
+        doc.status = "failed"
+        doc.error_message = "No readable text could be extracted from this document."
+        db.commit()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=doc.error_message)
     try:
         n = tenant_vector_store.add_documents(agent.id, workspace_id, doc.id, chunks)
         doc.status = "processed"
