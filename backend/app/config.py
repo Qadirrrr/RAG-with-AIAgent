@@ -28,14 +28,13 @@ class Settings(BaseSettings):
     CHUNK_WORD_OVERLAP: int = 15
 
     # Number of knowledge chunks retrieved per question.
-    # Top 5 precise chunks keep generation fast and prompt compact.
-    RETRIEVAL_K: int = 5
+    # Top 4 precise 80-word chunks keep generation fast and prompt compact.
+    RETRIEVAL_K: int = 4
 
-    # Small-to-big context expansion: retrieved chunks are optionally
-    # expanded with 1 adjacent chunk for surrounding context, capped
-    # at CONTEXT_MAX_CHARS so local model response stays fast (< 2-3s).
-    CONTEXT_NEIGHBORS: int = 1
-    CONTEXT_MAX_CHARS: int = 4000
+    # Context expansion: 0 avoids extra DB round-trips since 80-word
+    # sentence-aware chunks already preserve full sentences.
+    CONTEXT_NEIGHBORS: int = 0
+    CONTEXT_MAX_CHARS: int = 2500
 
     # Keyword fallback: when vector search finds fewer distinct chunks
     # than requested, chunks are also matched by keyword overlap.

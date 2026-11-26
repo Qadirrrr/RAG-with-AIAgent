@@ -155,14 +155,9 @@ def build_tools(workspace_id: str, agent_id: str, show_citations: bool = False,
         parts = []
         for doc in docs:
             text = (doc.page_content or "").strip()
-            if not text:
-                continue
-            if show_citations:
-                name = (doc.metadata or {}).get("document_name") or "Document"
-                parts.append(f"[Source: {name}]\n{text}")
-            else:
+            if text:
                 parts.append(text)
-        return "\n\n".join(parts) if parts else "No knowledge was found for that query."
+        return "\n\n".join(parts) if parts else "No information was found for that query."
 
     @tool
     def list_documents() -> str:
@@ -277,16 +272,16 @@ async def run_agent_answer(llm, question: str, history: Optional[List[Dict[str, 
     lang_note = f"Answer in {language}." if language else ""
     custom = f"\nChatbot instructions: {instructions}" if instructions else ""
     system_prompt = (
-        f"You are {agent_name}, a knowledgeable, direct, and professional AI assistant. You have tools that search this chatbot's own knowledge. Always answer strictly from this chatbot's knowledge."
+        f"You are {agent_name}, a professional and helpful assistant. Always answer directly and accurately."
         f"{custom}\n"
         f"{lang_note}\n"
-        "STRICT GROUNDING AND ACCURACY RULES:\n"
-        "1. Answer strictly using ONLY the provided KNOWLEDGE below or knowledge returned by knowledge_search. Do NOT extrapolate or assume anything outside of it.\n"
-        "2. Include specific numbers, names, dates, pricing, and requirements directly from the knowledge.\n"
-        "3. If the provided KNOWLEDGE does not answer the question and knowledge_search returns no relevant information, politely state: 'I apologize, but I do not have that specific information in my knowledge base.' Do NOT make up or guess an answer.\n"
-        "4. Use calculator for arithmetic and current_datetime for date or time questions, and list_documents when asked which documents are available.\n"
-        "5. NEVER start with or include phrases like 'Based on the provided knowledge', 'Based on the information provided', 'According to the knowledge', 'According to the document', 'source', or 'as stated in'. Answer directly, naturally, and professionally.\n"
-        "6. Be concise, direct, and prompt. Format with clean paragraphs or bullet points."
+        "Rules:\n"
+        "1. Answer strictly using ONLY the Facts provided or results returned by knowledge_search. Never invent, guess, or add outside information.\n"
+        "2. Include exact names, numbers, dates, prices, and details from the Facts.\n"
+        "3. If the Facts do not answer the question and knowledge_search finds nothing relevant, reply politely: 'I do not have that information.'\n"
+        "4. Use calculator for arithmetic and current_datetime for date or time questions, and list_documents when asked which files are available.\n"
+        "5. NEVER say 'based on', 'according to', 'provided knowledge', 'reference', 'context', 'document', or 'source'. Start directly with the answer.\n"
+        "6. Format cleanly with short paragraphs or bullet points."
     )
 
     graph = create_react_agent(model=llm, tools=tools, prompt=system_prompt)
@@ -299,7 +294,7 @@ async def run_agent_answer(llm, question: str, history: Optional[List[Dict[str, 
             elif msg.get("role") == "assistant":
                 messages.append(AIMessage(content=msg.get("content", "")))
     if pre_context:
-        messages.append(HumanMessage(content=f"Reference Information:\n{pre_context}\n\nQuestion:\n{question}"))
+        messages.append(HumanMessage(content=f"Facts:\n{pre_context}\n\nQuestion:\n{question}"))
     else:
         messages.append(HumanMessage(content=question))
 

@@ -100,19 +100,30 @@ def resolve_chat_model(model: Optional[str]) -> str:
 
 
 _META_PREFIX_RE = re.compile(
-    r"^\s*(?:based on|according to|from|per)\s+(?:the\s+)?(?:provided\s+|given\s+|available\s+)?(?:knowledge|information|context|data|document|documents|text|source|sources)(?:\s+base|\s+provided)?\s*[,:\-–—]?\s*",
+    r"^\s*(?:based on|according to|from|per|using|in)\s+(?:the\s+|my\s+)?(?:(?:provided|given|available|above|shared|uploaded|stored)\s+)*(?:knowledge(?:\s+base)?|reference(?:\s+information)?|information|context|data|facts|details|document|documents|text|source|sources)(?:\s+(?:provided|above|given|available))?\s*[,:\-–—]?\s*",
     re.IGNORECASE,
 )
+_INLINE_SOURCE_RE = re.compile(r"\s*[\(\[]\s*Source\s*:[^\)\]]+[\)\]]", re.IGNORECASE)
 
 
-def clean_meta_prefix(text: str) -> str:
-    """Strip robotic lead-ins like 'Based on the provided KNOWLEDGE, '."""
+def clean_answer_text(text: str) -> str:
+    """Remove robotic meta-references ('Based on the provided knowledge...') and inline source tags."""
     if not text:
         return text
-    cleaned = _META_PREFIX_RE.sub("", text, count=1).lstrip()
+    cleaned = _INLINE_SOURCE_RE.sub("", text)
+    # Strip up to two chained meta-prefixes if present
+    for _ in range(2):
+        next_cleaned = _META_PREFIX_RE.sub("", cleaned, count=1).lstrip()
+        if next_cleaned == cleaned:
+            break
+        cleaned = next_cleaned
     if cleaned and cleaned[0].islower():
         cleaned = cleaned[0].upper() + cleaned[1:]
-    return cleaned or text
+    return cleaned.strip() or text.strip()
+
+
+# Backward-compatible alias
+clean_meta_prefix = clean_answer_text
 
 
 class RAGAgentService:
@@ -134,6 +145,7 @@ class RAGAgentService:
                 temperature=temperature,
                 base_url=settings.OLLAMA_BASE_URL.rstrip("/"),
                 keep_alive="30m",
+                num_ctx=4096,
                 num_predict=512,
             )
         except Exception as e:
@@ -248,24 +260,23 @@ class RAGAgentService:
         if context_parts:
             context_text = "\n\n".join(context_parts)
             system_prompt = (
-                f"You are {agent_name}, a knowledgeable, direct, and professional AI assistant. "
-                "Your objective is to provide fast, highly accurate, and factual answers strictly grounded in the provided KNOWLEDGE.\n"
+                f"You are {agent_name}, a professional and helpful assistant.\n"
                 f"{custom}\n"
                 f"{lang_note}\n"
-                "STRICT GROUNDING & ACCURACY RULES:\n"
-                "1. Answer strictly using ONLY the facts explicitly stated in the KNOWLEDGE below. Do NOT assume, extrapolate, or invent any information.\n"
-                "2. If the user's question cannot be completely answered from the provided KNOWLEDGE, politely state: 'I apologize, but I do not have that specific information in my knowledge base.' Never hallucinate or guess.\n"
-                "3. Provide precise, specific details (such as names, numbers, dates, pricing, technical specifications, and steps) directly from the knowledge.\n"
-                "4. Be concise, direct, and prompt. Avoid conversational filler, unnecessary apologies, or repeating the question.\n"
-                "5. NEVER start with or include phrases like 'Based on the provided knowledge', 'Based on the information provided', 'According to the knowledge', 'According to the document', 'the provided text', or 'from the source'. Answer directly, naturally, and professionally.\n"
-                "6. Format with clean, readable structure (bullet points, clear paragraphs)."
+                "Rules:\n"
+                "1. Answer strictly using ONLY the Facts provided with the question. Never invent, guess, or add outside information.\n"
+                "2. If the Facts do not contain the answer, reply politely: 'I do not have that information.'\n"
+                "3. Include exact names, numbers, dates, prices, and details from the Facts.\n"
+                "4. Answer directly, naturally, and professionally — as if you already know these facts.\n"
+                "5. NEVER say 'based on', 'according to', 'provided knowledge', 'reference', 'context', 'document', or 'source'. Start directly with the answer.\n"
+                "6. Format cleanly with short paragraphs or bullet points."
             )
-            user_prompt = f"Reference Information:\n{context_text}\n\nQuestion:\n{question}"
+            user_prompt = f"Facts:\n{context_text}\n\nQuestion:\n{question}"
         else:
             system_prompt = (
-                f"You are {agent_name}, a professional AI assistant.{custom}\n"
+                f"You are {agent_name}, a professional assistant.{custom}\n"
                 f"{lang_note}\n"
-                "No relevant knowledge is available for this question. Politely state: 'I apologize, but I do not have that specific information in my knowledge base.' Do not guess or hallucinate."
+                "You do not have information to answer this question. Reply politely: 'I do not have that information.' Do not guess."
             )
             user_prompt = question
 
