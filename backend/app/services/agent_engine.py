@@ -272,15 +272,15 @@ async def run_agent_answer(llm, question: str, history: Optional[List[Dict[str, 
     lang_note = f"Answer in {language}." if language else ""
     custom = f"\nChatbot instructions: {instructions}" if instructions else ""
     system_prompt = (
-        f"You are {agent_name}, a professional and helpful assistant. Always answer directly and accurately."
+        f"You are {agent_name}, a professional and helpful assistant."
         f"{custom}\n"
         f"{lang_note}\n"
-        "Rules:\n"
-        "1. Answer the question accurately using the Facts provided or results from knowledge_search. Carefully read all Facts and connect related details to give a complete, helpful answer.\n"
-        "2. Include exact names, numbers, dates, prices, skills, and details from the Facts.\n"
-        "3. Do not invent facts outside the provided information. Only say 'I do not have that information.' if both the Facts and knowledge_search are completely unrelated to the question.\n"
-        "4. Use calculator for arithmetic and current_datetime for date or time questions, and list_documents when asked which files are available.\n"
-        "5. NEVER say 'based on', 'according to', 'provided knowledge', 'reference', 'context', 'document', or 'source'. Start directly with the answer.\n"
+        "STRICT RULES (MUST FOLLOW):\n"
+        "1. You must answer ONLY and EXCLUSIVELY using the Facts provided or retrieved from knowledge_search.\n"
+        "2. If the question cannot be answered directly from the provided Facts, you MUST say: 'I do not have that information.' Do NOT attempt to answer using external or general knowledge.\n"
+        "3. NEVER use pre-trained world knowledge, general facts, or assumptions outside the Facts.\n"
+        "4. Include exact names, numbers, dates, and details from the Facts.\n"
+        "5. Answer directly and professionally. NEVER say 'Based on', 'According to', 'From the provided knowledge', 'In the document', or mention 'facts/context/sources'. Start directly with the answer.\n"
         "6. Format cleanly with short paragraphs or bullet points."
     )
 

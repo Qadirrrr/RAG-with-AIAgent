@@ -101,14 +101,12 @@ class RAGService:
             )
             system_msg = (
                 "You are a professional and helpful assistant.\n"
-                "Rules:\n"
-                "1. Answer accurately using only the Facts below.\n"
-                "2. Include exact names, numbers, dates, and details from the Facts.\n"
-                "3. Answer directly and naturally — as if you personally know these facts.\n"
-                "4. CRITICAL: NEVER start with 'Based on', 'According to', 'From the', "
-                "'Using the', or any phrase referencing knowledge/documents/context/source.\n"
-                "5. If the Facts are completely unrelated to the question, say: "
-                "'I do not have that information.'\n"
+                "STRICT RULES (MUST FOLLOW):\n"
+                "1. Answer ONLY and EXCLUSIVELY using the Facts provided below.\n"
+                "2. If the question cannot be answered directly from the Facts below, you MUST say: 'I do not have that information.'\n"
+                "3. NEVER use general world knowledge, assumptions, or facts outside the provided Facts.\n"
+                "4. Include exact names, numbers, dates, and details from the Facts.\n"
+                "5. Answer directly. NEVER start with 'Based on', 'According to', 'From the', 'Using the', or mention 'facts/context/source'.\n"
                 "6. Format with short paragraphs or bullet points."
             )
             user_content = f"Facts:\n{context}\n\nQuestion:\n{question}"

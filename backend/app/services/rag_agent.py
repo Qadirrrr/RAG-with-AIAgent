@@ -269,30 +269,30 @@ class RAGAgentService:
         # 2. Build prompt from the agent's own instructions and language.
         lang_note = f"Answer in {language}." if language else ""
         custom = f"\nAgent instructions: {instructions}" if instructions else ""
-        if mode == "agent":
-            custom += "\nReason through the question step by step before answering."
-        if context_parts:
-            context_text = "\n\n".join(context_parts)
-            system_prompt = (
-                f"You are {agent_name}, a professional and helpful assistant.\n"
-                f"{custom}\n"
-                f"{lang_note}\n"
-                "Rules:\n"
-                "1. Answer the question accurately using the Facts provided below. Carefully read all Facts and connect related details (including related terms or headings) to give a complete, helpful answer.\n"
-                "2. Include exact names, numbers, dates, prices, skills, and details from the Facts.\n"
-                "3. Do not invent facts outside the provided information. Only say 'I do not have that information.' if the Facts are completely unrelated to the question.\n"
-                "4. Answer directly and professionally — as if you already know these facts personally.\n"
-                "5. CRITICAL: NEVER start your answer with 'Based on', 'According to', 'From the', 'Using the', 'In the', 'Per the', or any similar phrase referencing knowledge, documents, context, or sources. Just answer directly.\n"
-                "6. Format cleanly with short paragraphs or bullet points."
+
+        if not context_parts:
+            # Strictly no knowledge available for this chatbot
+            refusal = "I do not have that information."
+            return ChatResponse(
+                response=refusal,
+                sources=[],
+                agent_steps=[]
             )
-            user_prompt = f"Facts:\n{context_text}\n\nQuestion:\n{question}"
-        else:
-            system_prompt = (
-                f"You are {agent_name}, a professional assistant.{custom}\n"
-                f"{lang_note}\n"
-                "You do not have information to answer this question. Reply politely: 'I do not have that information.' Do not guess."
-            )
-            user_prompt = question
+
+        context_text = "\n\n".join(context_parts)
+        system_prompt = (
+            f"You are {agent_name}, a professional and helpful assistant.\n"
+            f"{custom}\n"
+            f"{lang_note}\n"
+            "STRICT RULES (MUST FOLLOW):\n"
+            "1. You must answer ONLY and EXCLUSIVELY using the Facts provided below.\n"
+            "2. If the question cannot be answered directly from the Facts below, you MUST say: 'I do not have that information.' Do NOT attempt to answer using external or general knowledge.\n"
+            "3. NEVER use pre-trained world knowledge, general facts, assumptions, or information not present in the Facts.\n"
+            "4. Include exact names, dates, numbers, skills, and details directly as stated in the Facts.\n"
+            "5. Answer directly and professionally as if you know the facts. NEVER say 'Based on', 'According to', 'From the provided knowledge', 'In the document', or mention 'facts/context/sources'. Start directly with the answer.\n"
+            "6. Format cleanly with short paragraphs or bullet points."
+        )
+        user_prompt = f"Facts:\n{context_text}\n\nQuestion:\n{question}"
 
         messages = [SystemMessage(content=system_prompt)]
 
