@@ -6,7 +6,6 @@ import Agents from './pages/Agents';
 import Playground from './pages/Playground';
 import Knowledge from './pages/Knowledge';
 import Integrations from './pages/Integrations';
-import Documents from './pages/Documents';
 import Settings from './pages/Settings';
 import apiService from './services/api';
 import { AuthProvider } from './context/AuthContext';
@@ -16,7 +15,6 @@ const routeTitles = {
   '/': 'AI Chatbots',
   '/agents': 'AI Chatbots',
   '/integrations': 'Integrations & API Script',
-  '/documents': 'Knowledge Documents',
   '/settings': 'System Settings',
 };
 
@@ -51,7 +49,6 @@ function Shell() {
             <Route path="/agents/:agentId/playground" element={<Playground />} />
             <Route path="/agents/:agentId/knowledge" element={<Knowledge />} />
             <Route path="/integrations" element={<Integrations />} />
-            <Route path="/documents" element={<Documents />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

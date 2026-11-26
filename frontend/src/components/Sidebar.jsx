@@ -1,11 +1,10 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Bot, Files, Plug, Settings, X } from 'lucide-react';
+import { Bot, Plug, Settings, X } from 'lucide-react';
 
 const navItems = [
   { name: 'Chatbots', path: '/agents', icon: Bot },
   { name: 'Integrations & API Script', path: '/integrations', icon: Plug },
-  { name: 'Knowledge Documents', path: '/documents', icon: Files },
   { name: 'Settings', path: '/settings', icon: Settings },
 ];
 
