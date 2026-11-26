@@ -53,10 +53,21 @@ export function WorkspaceProvider({ children }) {
     return ws;
   };
 
+  const deleteWorkspace = async (id) => {
+    const wasSelected = String(selectedId) === String(id);
+    const remaining = workspaces.filter((w) => String(w.id) !== String(id));
+    await apiService.deleteWorkspace(id);
+    setWorkspaces(remaining);
+    if (wasSelected) {
+      if (remaining.length > 0) selectWorkspace(remaining[0].id);
+      else selectWorkspace(null);
+    }
+  };
+
   const selected = workspaces.find((w) => String(w.id) === String(selectedId)) || null;
 
   return (
-    <WorkspaceContext.Provider value={{ workspaces, selected, selectedId, loading, error, load, selectWorkspace, createWorkspace }}>
+    <WorkspaceContext.Provider value={{ workspaces, selected, selectedId, loading, error, load, selectWorkspace, createWorkspace, deleteWorkspace }}>
       {children}
     </WorkspaceContext.Provider>
   );

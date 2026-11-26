@@ -79,6 +79,7 @@ export const apiService = {
   // Workspaces
   getWorkspaces: async () => normalizeList((await apiClient.get('/api/workspaces')).data, ['workspaces']),
   createWorkspace: async (payload) => (await apiClient.post('/api/workspaces', payload)).data,
+  deleteWorkspace: async (id) => (await apiClient.delete(`/api/workspaces/${id}`)).data,
   getWorkspace: async (id) => (await apiClient.get(`/api/workspaces/${id}`)).data,
 
   // Agents

@@ -1247,3 +1247,127 @@ def test_api_key_reveal_legacy_key_without_encrypted_copy_returns_404(client):
     r = client.get(f"{base}/{key_id}/reveal", headers=h)
     assert r.status_code == 404, r.text
     assert "created before key viewing was enabled" in r.json()["detail"]
+
+
+def _first_workspace_id(client, h):
+    return client.get("/api/auth/me", headers=h).json()["workspaces"][0]["id"]
+
+
+def test_delete_second_workspace_keeps_first(client):
+    """Owner deletes one of two projects: it and its chatbots/documents are
+    gone, the other project is fully intact."""
+    from app.db import Agent, Document, SessionLocal, Workspace
+
+    token, _ = _auth(client, "wsdelete@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    first_id = _first_workspace_id(client, h)
+
+    r = client.post("/api/workspaces", headers=h, json={"name": "Second Project"})
+    assert r.status_code == 200, r.text
+    second_id = r.json()["id"]
+
+    agent = client.post(f"/api/workspaces/{second_id}/agents", headers=h,
+                        json={"name": "Doomed Bot"}).json()
+    r = client.post(f"/api/workspaces/{second_id}/agents/{agent['id']}/documents", headers=h,
+                    files={"file": ("notes.txt", b"Doomed knowledge.", "text/plain")})
+    assert r.status_code == 200, r.text
+
+    r = client.delete(f"/api/workspaces/{second_id}", headers=h)
+    assert r.status_code == 200, r.text
+    assert r.json()["id"] == second_id
+
+    r = client.get(f"/api/workspaces/{second_id}", headers=h)
+    assert r.status_code == 404, r.text
+
+    listed = client.get("/api/workspaces", headers=h).json()
+    assert [w["id"] for w in listed] == [first_id]
+
+    db = SessionLocal()
+    assert db.query(Workspace).filter(Workspace.id == second_id).count() == 0
+    assert db.query(Agent).filter(Agent.workspace_id == second_id).count() == 0
+    assert db.query(Document).filter(Document.workspace_id == second_id).count() == 0
+    db.close()
+
+    r = client.get(f"/api/workspaces/{first_id}", headers=h)
+    assert r.status_code == 200, r.text
+
+
+def test_delete_only_workspace_returns_400(client):
+    """A user must always keep at least one project."""
+    token, _ = _auth(client, "wsonly@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    ws_id = _first_workspace_id(client, h)
+
+    r = client.delete(f"/api/workspaces/{ws_id}", headers=h)
+    assert r.status_code == 400, r.text
+    assert "only project" in r.json()["detail"]
+
+    r = client.get(f"/api/workspaces/{ws_id}", headers=h)
+    assert r.status_code == 200, r.text
+
+
+def test_delete_other_users_workspace_returns_404(client):
+    """Deleting someone else's project is a 404 and deletes nothing."""
+    token_a, _ = _auth(client, "wsowner@example.com")
+    ha = {"Authorization": f"Bearer {token_a}"}
+    ws_id = _first_workspace_id(client, ha)
+    client.post("/api/workspaces", headers=ha, json={"name": "Owner Extra"})
+
+    token_b, _ = _auth(client, "wsstranger@example.com")
+    hb = {"Authorization": f"Bearer {token_b}"}
+
+    r = client.delete(f"/api/workspaces/{ws_id}", headers=hb)
+    assert r.status_code == 404, r.text
+
+    r = client.get(f"/api/workspaces/{ws_id}", headers=ha)
+    assert r.status_code == 200, r.text
+
+
+def test_delete_workspace_with_usage_events(client):
+    """Regression: a used project must delete cleanly.
+
+    Chatting and uploading create usage_events rows; workspace-level rows
+    with agent_id NULL are not covered by any ORM cascade from Workspace,
+    so the endpoint deletes them explicitly. Without that, Postgres would
+    reject the delete with an FK violation (HTTP 500).
+    """
+    from app.db import (Agent, Conversation, Document, SessionLocal,
+                        UsageEvent, Workspace)
+
+    token, _ = _auth(client, "wsbusy@example.com")
+    h = {"Authorization": f"Bearer {token}"}
+    first_id = _first_workspace_id(client, h)
+
+    r = client.post("/api/workspaces", headers=h, json={"name": "Busy Project"})
+    assert r.status_code == 200, r.text
+    busy_id = r.json()["id"]
+
+    agent = client.post(f"/api/workspaces/{busy_id}/agents", headers=h,
+                        json={"name": "Busy Project Bot"}).json()
+    r = client.post(f"/api/workspaces/{busy_id}/agents/{agent['id']}/documents", headers=h,
+                    files={"file": ("notes.txt", b"Busy project knowledge.", "text/plain")})
+    assert r.status_code == 200, r.text
+    r = client.post(f"/api/workspaces/{busy_id}/agents/{agent['id']}/chat", headers=h,
+                    json={"message": "Hello"})
+    assert r.status_code == 200, r.text
+
+    # A workspace-level usage event with no agent (not cascade-covered).
+    db = SessionLocal()
+    db.add(UsageEvent(workspace_id=busy_id, agent_id=None, kind="message", tokens_or_count=1))
+    db.commit()
+    assert db.query(UsageEvent).filter(UsageEvent.workspace_id == busy_id).count() >= 2
+    db.close()
+
+    r = client.delete(f"/api/workspaces/{busy_id}", headers=h)
+    assert r.status_code == 200, r.text
+
+    db = SessionLocal()
+    assert db.query(Workspace).filter(Workspace.id == busy_id).count() == 0
+    assert db.query(UsageEvent).filter(UsageEvent.workspace_id == busy_id).count() == 0
+    assert db.query(Agent).filter(Agent.workspace_id == busy_id).count() == 0
+    assert db.query(Document).filter(Document.workspace_id == busy_id).count() == 0
+    assert db.query(Conversation).filter(Conversation.workspace_id == busy_id).count() == 0
+    db.close()
+
+    r = client.get(f"/api/workspaces/{first_id}", headers=h)
+    assert r.status_code == 200, r.text

@@ -1,15 +1,27 @@
 import React, { useState } from 'react';
-import { Building2, Plus, Check, ChevronDown } from 'lucide-react';
+import { Building2, Plus, Check, ChevronDown, Trash2 } from 'lucide-react';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { Modal, inputCls, labelCls, btnPrimary } from './ui';
 
 export default function WorkspaceSwitcher() {
-  const { workspaces, selected, selectWorkspace, createWorkspace, loading } = useWorkspace();
+  const { workspaces, selected, selectWorkspace, createWorkspace, deleteWorkspace, loading } = useWorkspace();
   const [open, setOpen] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
+
+  const remove = async (w) => {
+    if (!window.confirm(`Delete project '${w.name}'? Its chatbots, documents and chats will also be deleted. This cannot be undone.`)) return;
+    setDeleteError(null);
+    try {
+      await deleteWorkspace(w.id);
+      setOpen(false);
+    } catch (err) {
+      setDeleteError(err?.response?.data?.detail || err.message || 'Could not delete project.');
+    }
+  };
 
   const create = async (e) => {
     e.preventDefault();
@@ -29,7 +41,7 @@ export default function WorkspaceSwitcher() {
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => { setDeleteError(null); setOpen(!open); }}
         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-white/25 bg-white/10 hover:bg-white/15 text-left"
       >
         <span className="w-8 h-8 rounded-lg bg-teal-700 text-white flex items-center justify-center shrink-0">
@@ -45,24 +57,36 @@ export default function WorkspaceSwitcher() {
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+        <div className="absolute left-0 right-0 mt-2 bg-[#14344D] border border-white/15 rounded-xl shadow-lg z-50 overflow-hidden">
           {workspaces.map((w) => (
-            <button
-              key={w.id}
-              onClick={() => { selectWorkspace(w.id); setOpen(false); }}
-              className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] text-left hover:bg-slate-50"
-            >
-              <span className="flex-1 truncate text-slate-700">{w.name}</span>
-              {String(selected?.id) === String(w.id) && <Check className="w-4 h-4 text-teal-600" />}
-            </button>
+            <div key={w.id} className="group flex items-center hover:bg-white/10">
+              <button
+                onClick={() => { selectWorkspace(w.id); setOpen(false); }}
+                className="flex-1 min-w-0 flex items-center gap-2 pl-4 pr-1 py-2.5 text-[13px] text-left"
+              >
+                <span className="flex-1 truncate text-white/85">{w.name}</span>
+                {String(selected?.id) === String(w.id) && <Check className="w-4 h-4 text-teal-400 shrink-0" />}
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); remove(w); }}
+                title={`Delete project ${w.name}`}
+                className="p-2 mr-1.5 rounded-lg text-white/50 hover:text-red-300 hover:bg-white/10 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 shrink-0"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
           ))}
           <button
             onClick={() => { setShowCreate(true); setOpen(false); }}
-            className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] font-semibold text-teal-600 hover:bg-teal-50 border-t border-slate-100"
+            className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] font-semibold text-teal-300 hover:bg-white/10 border-t border-white/10"
           >
             <Plus className="w-4 h-4" /> New project
           </button>
         </div>
+      )}
+
+      {deleteError && (
+        <p className="mt-2 px-1 text-xs text-red-300">{deleteError}</p>
       )}
 
       {showCreate && (
