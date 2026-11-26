@@ -182,14 +182,6 @@ class DocumentLoaderService:
             chunk.metadata["chunk_index"] = i
             chunk.metadata["document_id"] = document_id
             chunk.metadata["document_name"] = original_filename
-        return chunks
-
-    def load_and_chunk(self, file_path: str, document_id: str = "doc", original_filename: str = "") -> List[Document]:
-        return self.load_and_split(file_path, document_id, original_filename or os.path.basename(file_path))
-        for i, chunk in enumerate(chunks):
-            chunk.metadata["chunk_index"] = i
-            chunk.metadata["document_id"] = document_id
-            chunk.metadata["document_name"] = original_filename
             
         return chunks
 

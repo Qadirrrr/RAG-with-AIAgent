@@ -97,7 +97,7 @@ class VectorStoreService:
     def __init__(self):
         self.persist_directory = os.path.abspath(settings.CHROMA_PERSIST_DIRECTORY)
         os.makedirs(self.persist_directory, exist_ok=True)
-        self.collection_name = "rag_knowledge_v1"
+        self.collection_name = "rag_documents"
         self._vector_store: Optional[Chroma] = None
         self._embeddings: Optional[Any] = None
         self._cached_provider: Optional[str] = None
@@ -135,8 +135,6 @@ class VectorStoreService:
             vector_store.add_documents(documents)
         except Exception as e:
             if "dimension" in str(e).lower():
-                # Stale collection created with older embedding model dimension (e.g. 3072 vs 1024)
-                # Auto-reset collection to match current bge-m3 model
                 try:
                     client = chromadb.PersistentClient(path=self.persist_directory)
                     client.delete_collection(name=self.collection_name)
@@ -149,19 +147,16 @@ class VectorStoreService:
                 raise e
         return len(documents)
 
-    def delete_by_metadata(self, key: str, value: str) -> bool:
+    def delete_document(self, document_id: str) -> bool:
         try:
             client = chromadb.PersistentClient(path=self.persist_directory)
             collection = client.get_or_create_collection(name=self.collection_name)
-            collection.delete(where={key: value})
+            collection.delete(where={"document_id": document_id})
             self._vector_store = None
             return True
         except Exception as e:
-            print(f"Error deleting where {key}={value} from Chroma: {e}")
+            print(f"Error deleting document {document_id} from Chroma: {e}")
             return False
-
-    def delete_document(self, document_id: str) -> bool:
-        return self.delete_by_metadata("document_id", document_id) or self.delete_by_metadata("doc_id", document_id)
 
     def similarity_search(self, query: str, k: Optional[int] = None) -> List[Document]:
         vector_store = self.get_vector_store()
