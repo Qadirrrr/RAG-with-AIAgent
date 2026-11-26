@@ -1,0 +1,21 @@
+ACME TECH CORPORATION - EMPLOYEE HANDBOOK & COMPANY POLICIES 2026
+
+1. REMOTE WORK POLICY
+Employees may work remotely up to 3 days per week with manager approval. Core working hours are between 10:00 AM and 4:00 PM EST. All remote employees must maintain high-speed internet connections and use company-provided VPN.
+
+2. VACATION & PAID TIME OFF (PTO)
+- Standard employees accrue 20 days of paid vacation per calendar year.
+- Senior staff (3+ years tenure) accrue 25 days of paid vacation.
+- Sick leave: 10 days per year, with doctor's certificate required for absences exceeding 3 consecutive business days.
+- Unused vacation days up to 5 days can be rolled over to the subsequent calendar year. Rollover must be utilized before March 31.
+
+3. HOME OFFICE EQUIPMENT ALLOWANCE
+All full-time employees are eligible for a one-time $1,200 home office equipment stipend upon onboarding. Reimbursable items include ergonomic chairs, sit-stand desks, monitors, and noise-canceling headsets. Expenses must be submitted via the finance portal within 60 days of purchase.
+
+4. HEALTH & WELLNESS BENEFITS
+- ACME Tech covers 100% of employee healthcare premiums and 75% for dependents.
+- Annual wellness stipend: $600 per year for gym memberships, fitness trackers, or mental health apps.
+
+5. SECURITY & CONFIDENTIALITY
+All employees must use 1Password for credential management and enable multi-factor authentication (MFA) on all corporate accounts. Customer data must never be downloaded to personal devices or shared without signed confidentiality agreements.
+

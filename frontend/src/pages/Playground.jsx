@@ -1,0 +1,171 @@
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { Bot, Plus, History, Files, Trash2 } from 'lucide-react';
+import apiService, { apiError } from '../services/api';
+import { useWorkspace } from '../context/WorkspaceContext';
+import ChatMessage from '../components/ChatMessage';
+import ChatInput from '../components/ChatInput';
+import { Spinner, ErrorBox, EmptyState } from '../components/ui';
+
+export default function Playground() {
+  const { agentId } = useParams();
+  const { selectedId } = useWorkspace();
+  const [agent, setAgent] = useState(null);
+  const [conversations, setConversations] = useState([]);
+  const [conversationId, setConversationId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState(null);
+  const endRef = useRef(null);
+
+  const greeting = () => ({
+    role: 'assistant',
+    content: agent?.greeting || `Hello! I am ${agent?.name || 'your assistant'}. How can I help you today?`,
+    timestamp: new Date().toISOString(),
+  });
+
+  const load = useCallback(async () => {
+    if (!selectedId || !agentId) { setLoading(false); return; }
+    setLoading(true);
+    setError(null);
+    try {
+      const [agentData, convs] = await Promise.allSettled([
+        apiService.getAgent(selectedId, agentId),
+        apiService.getConversations(selectedId),
+      ]);
+      if (agentData.status === 'fulfilled') setAgent(agentData.value.agent || agentData.value);
+      if (convs.status === 'fulfilled') {
+        const list = convs.value.filter((c) => !c.agent_id || String(c.agent_id) === String(agentId));
+        setConversations(list);
+      }
+    } catch (err) {
+      setError(apiError(err, 'Could not load playground. The backend agent endpoints may not be ready yet.'));
+    } finally { setLoading(false); }
+  }, [selectedId, agentId]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setMessages([]); setConversationId(null); }, [selectedId, agentId]);
+  useEffect(() => { if (agent && messages.length === 0) setMessages([greeting()]); }, [agent]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, sending]);
+
+  const startNew = () => { setConversationId(null); setMessages([greeting()]); setError(null); };
+
+  const openConversation = async (conv) => {
+    setConversationId(conv.id);
+    try {
+      const data = await apiService.getConversation(selectedId, conv.id);
+      const list = data.messages || data.conversation?.messages || [];
+      setMessages(list.length > 0 ? list : [greeting()]);
+    } catch (err) {
+      setError(apiError(err, 'Could not load this conversation.'));
+    }
+  };
+
+  const removeConversation = async (e, conv) => {
+    e.stopPropagation();
+    if (!window.confirm('Delete this conversation? This cannot be undone.')) return;
+    try {
+      await apiService.deleteConversation(selectedId, conv.id);
+      setConversations((prev) => prev.filter((c) => String(c.id) !== String(conv.id)));
+      if (String(conversationId) === String(conv.id)) startNew();
+    } catch (err) {
+      setError(apiError(err, 'Could not delete conversation.'));
+    }
+  };
+
+  const send = async (text) => {
+    setError(null);
+    const userMsg = { role: 'user', content: text, timestamp: new Date().toISOString() };
+    setMessages((prev) => [...prev, userMsg]);
+    setSending(true);
+    try {
+      const data = await apiService.chatWithAgent(selectedId, agentId, { message: text, conversation_id: conversationId });
+      if (data.conversation_id) setConversationId(data.conversation_id);
+      setMessages((prev) => [...prev, {
+        role: 'assistant',
+        content: data.response || data.answer || 'No response returned.',
+        sources: data.sources || [],
+        timestamp: new Date().toISOString(),
+      }]);
+      load();
+    } catch (err) {
+      setError(apiError(err, 'Failed to get a response from the agent.'));
+      setMessages((prev) => [...prev, { role: 'assistant', content: `Failed to get a response: ${apiError(err)}`, timestamp: new Date().toISOString() }]);
+    } finally { setSending(false); }
+  };
+
+  if (loading) return <Spinner label="Loading playground..." />;
+  if (!selectedId) return <EmptyState icon={Bot} title="No project selected" text="Select a project from the sidebar to test a chatbot." />;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center"><Bot className="w-5 h-5" /></div>
+          <div>
+            <h2 className="text-xl font-extrabold text-slate-900">{agent?.name || 'Agent playground'}</h2>
+            <p className="text-xs text-slate-500">{agent?.provider || ''} {agent?.model ? `/ ${agent.model}` : ''} {agent?.language ? ` / ${agent.language}` : ''}</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Link to={`/agents/${agentId}/knowledge`} className="inline-flex items-center gap-2 bg-white border border-slate-200 text-slate-700 font-semibold px-3.5 py-2 rounded-xl text-sm"><Files className="w-4 h-4" /> Knowledge</Link>
+          <button onClick={startNew} className="inline-flex items-center gap-2 bg-teal-700 hover:bg-teal-800 text-white font-semibold px-3.5 py-2 rounded-xl text-sm"><Plus className="w-4 h-4" /> New conversation</button>
+        </div>
+      </div>
+
+      <ErrorBox message={error} onRetry={load} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5 items-start">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 lg:col-span-1">
+          <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2 mb-3"><History className="w-4 h-4 text-teal-600" /> Conversations</h3>
+          {conversations.length === 0 ? (
+            <p className="text-xs text-slate-500">No conversations yet. Send a message to start the first one.</p>
+          ) : (
+            <div className="space-y-1.5 max-h-[420px] overflow-y-auto">
+              {conversations.map((c) => (
+                <div
+                  key={c.id}
+                  className={`group flex items-start gap-1 rounded-xl transition-colors ${String(conversationId) === String(c.id) ? 'bg-teal-50' : 'hover:bg-slate-50'}`}
+                >
+                  <button
+                    onClick={() => openConversation(c)}
+                    className={`flex-1 min-w-0 text-left px-3 py-2.5 text-sm ${String(conversationId) === String(c.id) ? 'text-teal-700 font-semibold' : 'text-slate-600'}`}
+                  >
+                    <span className="block truncate">{c.title || c.first_message || `Conversation ${String(c.id).slice(0, 8)}`}</span>
+                    <span className="block text-[11px] text-slate-400 mt-0.5">{c.message_count ?? c.messages?.length ?? ''} {c.created_at ? new Date(c.created_at).toLocaleDateString() : ''}</span>
+                  </button>
+                  <button
+                    onClick={(e) => removeConversation(e, c)}
+                    title="Delete conversation"
+                    aria-label="Delete conversation"
+                    className="shrink-0 mt-2 mr-2 p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 opacity-60 lg:opacity-0 lg:group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-15rem)] min-h-[480px] lg:col-span-3">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+            {messages.map((m, i) => <ChatMessage key={i} message={m} />)}
+            {sending && (
+              <div className="flex justify-start py-2" aria-label="Loading">
+                <div className="bg-slate-50 border border-slate-200/80 rounded-2xl px-4 py-3 flex items-center space-x-2">
+                  <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce" />
+                  <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce [animation-delay:-.3s]" />
+                  <div className="w-2 h-2 rounded-full bg-teal-500 animate-bounce [animation-delay:-.5s]" />
+                </div>
+              </div>
+            )}
+            <div ref={endRef} />
+          </div>
+          <ChatInput onSendMessage={send} isLoading={sending} />
+        </div>
+      </div>
+    </div>
+  );
+}

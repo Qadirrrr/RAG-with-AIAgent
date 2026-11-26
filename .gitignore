@@ -1,0 +1,38 @@
+# Secrets and local env - never commit real keys
+.env
+backend/.env
+frontend/.env
+*.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+saas-venv/
+.pytest_cache/
+*.db
+*.sqlite3
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+build/
+
+# Runtime data (local only, contains uploads and vector indexes)
+data/chroma/
+data/uploads/
+data/*.json
+backend/data/
+!backend/data/.gitkeep
+!data/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log

@@ -1,0 +1,24 @@
+AURORA AI AGENT PLATFORM - TECHNICAL SPECIFICATIONS
+
+1. ARCHITECTURE OVERVIEW
+The Aurora AI Platform is an enterprise-grade Retrieval-Augmented Generation (RAG) system designed to orchestrate autonomous AI agents. The platform leverages FastAPI for high-throughput asynchronous API endpoints, LangChain for agent orchestration, ChromaDB for vector retrieval, and self-hosted Qwen models for reasoning and synthesis.
+
+2. VECTOR EMBEDDINGS & CHROMA PERSISTENCE
+- Default Embedding Model: text-embedding-3-small (1536 dimensions).
+- Chunk Size: 1000 characters with 150 character overlap.
+- Similarity Metric: Cosine similarity with Top-K retrieval set to 5 chunks.
+- Persistence: ChromaDB local vector storage with SQLite index backing.
+
+3. AGENT RETRIEVAL PIPELINE
+The AI Agent operates using tool-calling capabilities. When a query is received:
+1. The agent inspects the user question.
+2. The agent executes the `search_documents` tool to query the Chroma vector store.
+3. The system injects relevant document chunks including metadata (source filename and page number).
+4. If the retrieved context contains sufficient data, the LLM answers the query and cites the sources.
+5. If no relevant information is present in the database, the agent strictly replies that no relevant information was found.
+
+4. RATE LIMITS & SLA
+- Default API rate limit: 120 requests per minute per IP.
+- Vector retrieval latency SLA: < 120ms for collections up to 100,000 chunks.
+- Maximum document file upload size: 25 Megabytes (PDF, DOCX, TXT formats supported).
+
