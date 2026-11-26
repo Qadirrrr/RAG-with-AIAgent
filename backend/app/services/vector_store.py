@@ -134,16 +134,19 @@ class VectorStoreService:
         vector_store.add_documents(documents)
         return len(documents)
 
-    def delete_document(self, document_id: str) -> bool:
+    def delete_by_metadata(self, key: str, value: str) -> bool:
         try:
             client = chromadb.PersistentClient(path=self.persist_directory)
             collection = client.get_or_create_collection(name=self.collection_name)
-            collection.delete(where={"document_id": document_id})
+            collection.delete(where={key: value})
             self._vector_store = None
             return True
         except Exception as e:
-            print(f"Error deleting document {document_id} from Chroma: {e}")
+            print(f"Error deleting where {key}={value} from Chroma: {e}")
             return False
+
+    def delete_document(self, document_id: str) -> bool:
+        return self.delete_by_metadata("document_id", document_id) or self.delete_by_metadata("doc_id", document_id)
 
     def similarity_search(self, query: str, k: Optional[int] = None) -> List[Document]:
         vector_store = self.get_vector_store()

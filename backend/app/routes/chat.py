@@ -1,26 +1,32 @@
-from fastapi import APIRouter, HTTPException, status
-from app.models.schemas import ChatRequest, ChatResponse
-from app.services.rag_agent import rag_agent_service
+"""POST /api/chat — single-agent RAG chat endpoint."""
+import logging
+from typing import List, Optional
 
-router = APIRouter(prefix="/api/chat", tags=["chat"])
+from fastapi import APIRouter
+from pydantic import BaseModel
 
-@router.post("", response_model=ChatResponse)
-async def chat_with_agent(request: ChatRequest):
-    if not request.message or not request.message.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Message cannot be empty."
-        )
+from app.services.rag_service import rag_service
 
-    history_dicts = [
-        {"role": msg.role, "content": msg.content}
-        for msg in (request.history or [])
-    ]
+logger = logging.getLogger("chat")
+router = APIRouter(prefix="/api", tags=["chat"])
 
-    response = await rag_agent_service.answer_question(
-        question=request.message.strip(),
-        history=history_dicts
-    )
 
-    return response
+class Message(BaseModel):
+    role: str   # "user" | "assistant"
+    content: str
 
+
+class ChatRequest(BaseModel):
+    message: str
+    history: Optional[List[Message]] = []
+
+
+class ChatResponse(BaseModel):
+    response: str
+
+
+@router.post("/chat", response_model=ChatResponse)
+async def chat(req: ChatRequest):
+    history = [m.dict() for m in (req.history or [])]
+    answer = await rag_service.answer(req.message, history)
+    return ChatResponse(response=answer)

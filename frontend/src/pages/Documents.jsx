@@ -1,148 +1,216 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
-import { Files, RefreshCw, AlertCircle, Search } from 'lucide-react';
-import DocumentCard from '../components/DocumentCard';
+import { Files, Upload, Trash2, RefreshCw, AlertCircle, CheckCircle, FileText, Search } from 'lucide-react';
 import apiService, { apiError } from '../services/api';
-import { useWorkspace } from '../context/WorkspaceContext';
 
 export default function Documents() {
-  const { selectedId } = useWorkspace();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [deletingId, setDeletingId] = useState(null);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchDocuments = useCallback(async () => {
-    if (!selectedId) { setDocuments([]); setLoading(false); return; }
+  const fetchDocs = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      setDocuments([]);
-      const docs = await apiService.getWorkspaceDocuments(selectedId);
-      setDocuments(docs || []);
+      const list = await apiService.getDocuments();
+      setDocuments(list);
     } catch (err) {
-      setError(apiError(err, 'Failed to fetch documents. Verify that the backend server is running.'));
+      setError(apiError(err, 'Failed to fetch documents.'));
     } finally {
       setLoading(false);
     }
-  }, [selectedId]);
+  }, []);
 
-  useEffect(() => { fetchDocuments(); }, [fetchDocuments]);
+  useEffect(() => {
+    fetchDocs();
+  }, [fetchDocs]);
 
-  const handleDelete = async (documentId) => {
-    const doc = documents.find((d) => d.id === documentId);
-    if (!doc?.agent_id) return;
-    if (!window.confirm('Are you sure you want to delete this document?')) {
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setUploadProgress(0);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const res = await apiService.uploadDocument(file, (evt) => {
+        if (evt.total) {
+          setUploadProgress(Math.round((evt.loaded * 100) / evt.total));
+        }
+      });
+      setSuccess(`"${file.name}" uploaded and indexed successfully (${res.chunks} chunks).`);
+      e.target.value = '';
+      await fetchDocs();
+    } catch (err) {
+      setError(apiError(err, 'Failed to upload document.'));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDelete = async (docId, filename) => {
+    if (!window.confirm(`Delete "${filename}"? Its chunks will be removed from vector memory.`)) {
       return;
     }
+    setDeletingId(docId);
+    setError(null);
+    setSuccess(null);
     try {
-      setDeletingId(documentId);
-      await apiService.deleteAgentDocument(selectedId, doc.agent_id, documentId);
-      setDocuments((prev) => prev.filter((d) => d.id !== documentId));
+      await apiService.deleteDocument(docId);
+      setDocuments((prev) => prev.filter((d) => d.id !== docId));
+      setSuccess(`"${filename}" deleted successfully.`);
     } catch (err) {
-      alert(apiError(err, 'Failed to delete document.'));
+      setError(apiError(err, 'Failed to delete document.'));
     } finally {
       setDeletingId(null);
     }
   };
 
-  const filteredDocuments = documents.filter((doc) =>
-    (doc.filename || '').toLowerCase().includes(searchQuery.toLowerCase())
+  const filtered = documents.filter((d) =>
+    (d.filename || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-6 max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">
-            Knowledge Documents
-          </h2>
-          <p className="text-slate-500 text-sm mt-1">
-            All documents in this project, across its chatbots.
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Knowledge Documents</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Upload PDFs, text, or docs. The AI answers strictly from these files.
           </p>
         </div>
-
         <button
-          onClick={fetchDocuments}
+          onClick={fetchDocs}
           disabled={loading}
-          className="inline-flex items-center space-x-2 bg-white hover:bg-slate-50 text-slate-700 font-medium px-4 py-2 rounded-xl text-sm border border-slate-200 transition-colors shadow-xs disabled:opacity-50 self-start sm:self-auto"
+          className="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 font-medium px-4 py-2 rounded-xl text-sm border border-slate-200 transition-colors shadow-xs disabled:opacity-50 self-start sm:self-auto"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-teal-600' : ''}`} />
           <span>Refresh</span>
         </button>
       </div>
 
-      {/* Upload happens per chatbot, so files always belong to one project and one chatbot */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200/90 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <p className="text-sm text-slate-600">Documents belong to a chatbot in this project. Add files or website URLs from a chatbot knowledge base.</p>
-        <Link to="/agents" className="inline-flex items-center justify-center bg-teal-700 hover:bg-teal-800 text-white font-semibold px-4 py-2 rounded-xl text-sm shrink-0">Go to Chatbots</Link>
-      </div>
-
-      {/* Error alert */}
+      {/* Notifications */}
       {error && (
         <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center space-x-3 text-rose-800 text-sm">
-          <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
+          <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
           <span>{error}</span>
         </div>
       )}
+      {success && (
+        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center space-x-3 text-emerald-800 text-sm">
+          <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+          <span>{success}</span>
+        </div>
+      )}
 
-      {/* Document List Section */}
-      <div className="space-y-4">
+      {/* Upload Box */}
+      <div className="bg-white rounded-2xl p-6 border-2 border-dashed border-slate-200 hover:border-teal-500 transition-colors text-center shadow-xs">
+        <label className="cursor-pointer block">
+          <input
+            type="file"
+            onChange={handleFileUpload}
+            disabled={uploading}
+            accept=".pdf,.txt,.docx,.csv,.md"
+            className="hidden"
+          />
+          <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mx-auto mb-3">
+            <Upload className={`w-6 h-6 ${uploading ? 'animate-bounce' : ''}`} />
+          </div>
+          <p className="text-sm font-semibold text-slate-800">
+            {uploading ? 'Uploading and indexing document...' : 'Click or drop files to upload'}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">
+            Supported formats: PDF, DOCX, TXT, CSV, Markdown
+          </p>
+        </label>
+
+        {uploading && (
+          <div className="mt-4 max-w-xs mx-auto">
+            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-teal-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress || 30}%` }}
+              />
+            </div>
+            <p className="text-xs text-slate-500 mt-1">Processing into vector store...</p>
+          </div>
+        )}
+      </div>
+
+      {/* Document List Header & Search */}
+      <div className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h3 className="text-base font-semibold text-slate-800 flex items-center space-x-2">
+          <h2 className="text-base font-semibold text-slate-800 flex items-center gap-2">
             <Files className="w-5 h-5 text-teal-600" />
-            <span>Uploaded Files ({documents.length})</span>
-          </h3>
-
-          {/* Search box */}
+            <span>Indexed Documents ({documents.length})</span>
+          </h2>
           {documents.length > 0 && (
             <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
               <input
                 type="text"
                 placeholder="Search documents..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-600/20/20 focus:border-teal-500"
+                className="w-full pl-9 pr-3 py-1.5 text-xs bg-white rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600"
               />
             </div>
           )}
         </div>
 
-        {loading && documents.length === 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {[1, 2, 3].map((n) => (
-              <div key={n} className="bg-white rounded-2xl border border-slate-200 p-6 h-40 animate-pulse flex flex-col justify-between">
-                <div className="h-4 bg-slate-100 rounded w-1/3" />
-                <div className="h-3 bg-slate-100 rounded w-2/3" />
-                <div className="h-4 bg-slate-100 rounded w-1/2" />
-              </div>
-            ))}
-          </div>
-        ) : filteredDocuments.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredDocuments.map((doc) => (
-              <DocumentCard
-                key={doc.id}
-                document={doc}
-                onDelete={handleDelete}
-                isDeleting={deletingId === doc.id}
-              />
-            ))}
+        {/* Document items */}
+        {loading ? (
+          <div className="text-center py-10 text-sm text-slate-500">Loading documents...</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-12 px-4 bg-white rounded-2xl border border-slate-200">
+            <FileText className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+            <p className="text-sm font-semibold text-slate-700">No documents found</p>
+            <p className="text-xs text-slate-400 mt-1">Upload a PDF or document above to get started.</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-slate-200/90 p-12 text-center text-slate-400">
-            <Files className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-            <p className="text-base font-semibold text-slate-700">No documents found</p>
-            <p className="text-xs text-slate-500 mt-1">
-              {searchQuery ? 'No documents match your search query.' : 'Upload a PDF, DOCX, or TXT file above to get started.'}
-            </p>
+          <div className="grid grid-cols-1 gap-2.5">
+            {filtered.map((doc) => (
+              <div
+                key={doc.id}
+                className="bg-white rounded-xl p-4 border border-slate-200/90 shadow-xs flex items-center justify-between gap-4 hover:border-slate-300 transition-colors"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{doc.filename}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700">
+                        {doc.status || 'processed'}
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        {doc.chunks} chunks indexed
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleDelete(doc.id, doc.filename)}
+                  disabled={deletingId === doc.id}
+                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors shrink-0 disabled:opacity-40"
+                  title="Delete document"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>
     </div>
   );
 }
-

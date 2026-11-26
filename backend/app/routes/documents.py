@@ -1,150 +1,119 @@
+"""Document upload / list / delete — feeds the RAG vector store.
+No DB required — persists metadata to a simple JSON registry file.
+"""
+import json
+import logging
 import os
 import uuid
-import shutil
-from datetime import datetime
-from fastapi import APIRouter, UploadFile, File, HTTPException, status
-from app.config import settings
-from app.models.schemas import DocumentInfo, DocumentUploadResponse, DashboardStats
-from app.services.storage import storage_service
-from app.services.document_loader import document_loader_service
-from app.services.vector_store import vector_store_service
+from typing import List
 
+from fastapi import APIRouter, File, HTTPException, UploadFile
+from pydantic import BaseModel
+
+from app.config import settings
+from app.services.rag_service import rag_service
+
+logger = logging.getLogger("documents")
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc", ".txt", ".md"}
+REGISTRY_FILE = os.path.join(settings.UPLOAD_DIRECTORY, "documents_registry.json")
 
-@router.post("/upload", response_model=DocumentUploadResponse)
+
+class DocumentOut(BaseModel):
+    id: str
+    filename: str
+    status: str
+    chunks: int
+
+
+def _load_registry() -> dict:
+    if os.path.exists(REGISTRY_FILE):
+        try:
+            with open(REGISTRY_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            logger.warning(f"Could not read registry file: {e}")
+    return {}
+
+
+def _save_registry(data: dict):
+    try:
+        with open(REGISTRY_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        logger.error(f"Could not save registry file: {e}")
+
+
+@router.get("", response_model=List[DocumentOut])
+def list_documents():
+    reg = _load_registry()
+    return [
+        DocumentOut(id=k, filename=v.get("filename", ""), status=v.get("status", "processed"), chunks=v.get("chunks", 0))
+        for k, v in reg.items()
+    ]
+
+
+@router.post("", response_model=DocumentOut)
 async def upload_document(file: UploadFile = File(...)):
-    filename = file.filename or "unknown"
-    ext = os.path.splitext(filename)[1].lower()
+    allowed = {".pdf", ".txt", ".docx", ".csv", ".md"}
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in allowed:
+        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}. Allowed: {', '.join(allowed)}")
 
-    if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported file type '{ext}'. Allowed types: PDF, DOCX, TXT."
-        )
+    doc_id = uuid.uuid4().hex
+    save_path = os.path.join(settings.UPLOAD_DIRECTORY, f"{doc_id}{ext}")
 
-    doc_id = uuid.uuid4().hex[:12]
-    timestamp = datetime.utcnow()
-    
-    # Save file to upload directory
-    safe_filename = f"{doc_id}_{filename}"
-    file_path = os.path.join(settings.UPLOAD_DIRECTORY, safe_filename)
-    
+    contents = await file.read()
+    with open(save_path, "wb") as f:
+        f.write(contents)
+
+    reg = _load_registry()
+    reg[doc_id] = {"filename": file.filename, "status": "processing", "chunks": 0}
+    _save_registry(reg)
+
     try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        
-        file_size = os.path.getsize(file_path)
+        chunks = rag_service.ingest_file(save_path, doc_id, file.filename)
+        reg[doc_id]["status"] = "processed"
+        reg[doc_id]["chunks"] = chunks
+        _save_registry(reg)
+        logger.info(f"Ingested {file.filename} → {chunks} chunks (id={doc_id})")
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save file: {str(e)}"
-        )
+        reg[doc_id]["status"] = "error"
+        _save_registry(reg)
+        logger.error(f"Ingest failed for {file.filename}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to process document: {e}")
 
-    # Initial metadata
-    doc_info = {
-        "id": doc_id,
-        "filename": filename,
-        "file_type": ext.replace(".", "").upper(),
-        "file_size": file_size,
-        "upload_date": timestamp.isoformat(),
-        "status": "processing",
-        "chunks_count": 0,
-        "error_message": None,
-        "file_path": file_path
-    }
-    storage_service.save_document(doc_info)
-
-    # Extract, chunk, and embed
-    try:
-        chunks = document_loader_service.load_and_split(file_path, doc_id, filename)
-
-        # Embeddings come from the self-hosted Ollama server (BGE model).
-        # If Ollama is unreachable, add_documents raises and the document
-        # is marked failed with that message below, not a server crash.
-        vector_store_service.add_documents(chunks)
-        
-        # Mark as processed
-        doc_info["status"] = "processed"
-        doc_info["chunks_count"] = len(chunks)
-        doc_info["error_message"] = None
-        storage_service.save_document(doc_info)
-        storage_service.log_activity("upload", f"Uploaded: {filename}", f"Generated {len(chunks)} chunks")
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        error_str = str(e)
-        if "connect" in error_str.lower() or "ollama" in error_str.lower():
-            friendly_error = ("Could not reach the self-hosted Ollama service to generate embeddings. "
-                              "Please check that Ollama is running and that the embedding model is pulled "
-                              "(ollama pull bge-m3).")
-        else:
-            friendly_error = f"Failed to process and embed document: {error_str}"
-
-        doc_info["status"] = "failed"
-        doc_info["error_message"] = friendly_error
-        storage_service.save_document(doc_info)
-        storage_service.log_activity("upload_failed", f"Failed: {filename}", friendly_error)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=friendly_error
-        )
-
-    return DocumentUploadResponse(
-        message="Document uploaded and processed successfully",
-        document=DocumentInfo(
-            id=doc_info["id"],
-            filename=doc_info["filename"],
-            file_type=doc_info["file_type"],
-            file_size=doc_info["file_size"],
-            upload_date=timestamp,
-            status=doc_info["status"],
-            chunks_count=doc_info["chunks_count"],
-            error_message=doc_info["error_message"]
-        )
+    return DocumentOut(
+        id=doc_id,
+        filename=file.filename,
+        status=reg[doc_id]["status"],
+        chunks=reg[doc_id]["chunks"],
     )
 
-@router.get("", response_model=list[DocumentInfo])
-async def list_documents():
-    docs = storage_service.get_all_documents()
-    result = []
-    for d in docs:
-        result.append(
-            DocumentInfo(
-                id=d["id"],
-                filename=d["filename"],
-                file_type=d["file_type"],
-                file_size=d["file_size"],
-                upload_date=datetime.fromisoformat(d["upload_date"]) if isinstance(d["upload_date"], str) else d["upload_date"],
-                status=d["status"],
-                chunks_count=d.get("chunks_count", 0),
-                error_message=d.get("error_message")
-            )
-        )
-    return result
 
-@router.delete("/{document_id}")
-async def delete_document(document_id: str):
-    doc = storage_service.get_document(document_id)
-    if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+@router.delete("/{doc_id}")
+def delete_document(doc_id: str):
+    reg = _load_registry()
+    if doc_id not in reg:
+        raise HTTPException(status_code=404, detail="Document not found")
 
-    # Remove from Chroma
-    vector_store_service.delete_document(document_id)
+    info = reg.pop(doc_id)
+    _save_registry(reg)
 
-    # Remove physical file
-    file_path = doc.get("file_path")
-    if file_path and os.path.exists(file_path):
-        try:
-            os.remove(file_path)
-        except Exception:
-            pass
+    # Remove from vector store
+    try:
+        rag_service.delete_document(doc_id)
+    except Exception as e:
+        logger.warning(f"Vector store delete failed for {doc_id}: {e}")
 
-    # Remove from storage
-    storage_service.delete_document(document_id)
-    storage_service.log_activity("delete", f"Deleted: {doc.get('filename')}", f"Removed ID: {document_id}")
+    # Remove uploaded file
+    for ext in (".pdf", ".txt", ".docx", ".csv", ".md"):
+        path = os.path.join(settings.UPLOAD_DIRECTORY, f"{doc_id}{ext}")
+        if os.path.exists(path):
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+            break
 
-    return {"message": "Document deleted successfully", "id": document_id}
-
+    return {"deleted": True, "filename": info.get("filename", "")}
