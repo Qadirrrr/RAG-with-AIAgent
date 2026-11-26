@@ -62,13 +62,14 @@ class RAGService:
 
     def ingest_file(self, file_path: str, doc_id: str, filename: str) -> int:
         """Load, chunk, embed and store a document. Returns chunk count."""
-        chunks = document_loader_service.load_and_chunk(file_path)
+        chunks = document_loader_service.load_and_split(file_path, doc_id, filename)
         if not chunks:
             raise ValueError("No text could be extracted from the document.")
 
         # Tag each chunk with doc metadata
         for chunk in chunks:
             chunk.metadata["doc_id"] = doc_id
+            chunk.metadata["document_id"] = doc_id
             chunk.metadata["document_name"] = filename
 
         vector_store_service.add_documents(chunks)
