@@ -1,6 +1,11 @@
 import axios from 'axios';
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+// In browser/production, empty string lets requests go to the current host via Nginx (/api/...)
+// Only use an explicit URL if specifically configured and not defaulting to localhost in production
+const rawBase = import.meta.env.VITE_API_BASE_URL || '';
+export const API_BASE_URL = (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && rawBase.includes('localhost'))
+  ? ''
+  : rawBase;
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
